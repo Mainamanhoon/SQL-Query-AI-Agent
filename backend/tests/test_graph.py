@@ -154,3 +154,20 @@ async def test_debugging_and_optimization_return_task_details(
     assert result["status"] == "success"
     for key, value in details.items():
         assert result[key] == value
+
+
+async def test_valid_debug_query_does_not_require_an_original_error(
+    database: DatabaseService,
+) -> None:
+    """A valid SQL validation request can explain success without inventing an error."""
+    model = ScriptedModel(
+        [
+            decision("debug"),
+            "SELECT name FROM Users",
+            explanation(),
+        ]
+    )
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(initial_state(ChatRequest(message="Validate this SQL query")))
+    assert result["status"] == "success"
+    assert result["original_error"] is None

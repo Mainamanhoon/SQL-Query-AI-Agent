@@ -91,11 +91,15 @@ def validation_node(state: AgentState, dependencies: AgentDependencies) -> Dict[
         sql = dependencies.validator.validate(state["generated_sql"])
         return {"generated_sql": sql, "is_valid": True, "error_msg": None}
     except SQLValidationError as error:
-        return {
+        error_message = str(error)
+        update: Dict[str, Any] = {
             "is_valid": False,
-            "error_msg": str(error),
+            "error_msg": error_message,
             "retry_count": state["retry_count"] + 1,
         }
+        if state["original_error"] is None:
+            update["original_error"] = error_message
+        return update
 
 
 async def executor_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
@@ -114,12 +118,16 @@ async def executor_node(state: AgentState, dependencies: AgentDependencies) -> D
         results = await asyncio.to_thread(dependencies.database.execute, state["generated_sql"])
         return {"query_results": results, "error_msg": None}
     except sqlite3.DatabaseError as error:
-        return {
+        error_message = str(error)
+        update: Dict[str, Any] = {
             "is_valid": False,
-            "error_msg": str(error),
+            "error_msg": error_message,
             "query_results": None,
             "retry_count": state["retry_count"] + 1,
         }
+        if state["original_error"] is None:
+            update["original_error"] = error_message
+        return update
 
 
 def safe_explanation(text: str) -> bool:
@@ -161,7 +169,11 @@ async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> 
         ]
         if not all(safe_explanation(text) for text in texts):
             raise ValueError("Unsafe explanation.")
-        if state["intent"] == "debug" and not explanation.original_error:
+        if (
+            state["intent"] == "debug"
+            and state["original_error"]
+            and not explanation.original_error
+        ):
             raise ValueError("Debugging explanation is missing.")
         if state["intent"] == "optimize" and not explanation.optimization_tips:
             raise ValueError("Optimization advice is missing.")
@@ -217,8 +229,8 @@ def fallback_node(state: AgentState) -> Dict[str, Any]:
     """
     unsupported_function = "not authorized to use function" in (state["error_msg"] or "")
     message = (
-        "This query needs a SQL function that the current strict database policy does not allow. "
-        "Try a request to list or filter records."
+        "This query uses a SQL function that is not supported by the read-only database policy. "
+        "Try a supported aggregate or a simpler list/filter request."
         if unsupported_function
         else "I couldn't produce a valid query after three attempts. Please clarify the columns, "
         "filters, or relationships you need."

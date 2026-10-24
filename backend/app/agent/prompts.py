@@ -43,7 +43,9 @@ for requested analytics, but never use extension-loading or write-capable functi
 
 EXPLAINER_PROMPT = """Explain the final validated and executed SQL in plain English. Return JSON:
 {"explanation":"...", "original_error":null, "optimization_tips":[]}.
-For debugging, original_error must identify the original issue and why the correction fixes it.
+For debugging, explain the original issue and correction when original_error is supplied in the
+context. If no original error exists because the submitted SQL was already valid, keep
+original_error null and explicitly say that the query passed validation.
 For optimization, include concrete performance/index recommendations in prose, never DDL or SQL.
 Do not claim a performance improvement was measured; no benchmark has been performed.
 Describe joins, filters, sorting, and currency conversion accurately. Do not invent result values.
@@ -69,6 +71,7 @@ def build_messages(
         "previous_sql": state["previous_sql"],
         "failed_sql": state["generated_sql"] if state["error_msg"] else None,
         "last_error": state["error_msg"],
+        "original_error": state["original_error"],
         "validated_sql": state["generated_sql"] if state["is_valid"] else None,
     }
     return [
