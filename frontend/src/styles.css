@@ -1334,7 +1334,6 @@ button svg {
 }
 .theme-dark .empty-code,
 .theme-dark .empty-results,
-.theme-dark .results-footer,
 .theme-dark .sql-footer,
 .theme-dark .result-count {
   color: #8ea390;
@@ -1351,6 +1350,25 @@ button svg {
 .theme-dark .sql-footer {
   background: #152118;
   border-color: #2b3b2f;
+}
+.theme-dark .results-footer {
+  color: #8ea390;
+  background: #152118;
+  border-top: 1px solid #2b3b2f;
+}
+.theme-dark .result-count {
+  color: #b8ceb3;
+  background: #2b3b2f;
+}
+.theme-dark .explanation-icon {
+  color: #c2d8ba;
+  background: #263a2a;
+}
+.theme-dark .empty-results h3 {
+  color: #b8ceb3;
+}
+.theme-dark .empty-results p {
+  color: #8ea390;
 }
 .theme-dark .explanation-box h3,
 .theme-dark .explanation-box p,
