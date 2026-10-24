@@ -43,11 +43,16 @@ def requests_destructive_operation(message: str) -> bool:
         re.IGNORECASE,
     ):
         return True
+    index_advice = re.search(
+        r"\b(?:recommend|suggest|consider|advise|propose)\b[\s\S]{0,100}\bindex\b",
+        message,
+        re.IGNORECASE,
+    )
     if re.search(
         r"\bcreate\b[\s\S]{0,40}\b(?:table|index|view|trigger|database|schema)\b",
         message,
         re.IGNORECASE,
-    ):
+    ) and not index_advice:
         return True
     return bool(
         re.search(

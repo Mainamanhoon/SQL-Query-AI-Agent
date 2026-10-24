@@ -115,6 +115,7 @@ def test_destructive_requests_are_rejected_before_generation(message: str) -> No
     [
         "Create a query to list users",
         "Optimize this query by removing unnecessary joins",
+        "Optimize this query and recommend creating an index on Users.state",
     ],
 )
 def test_read_only_sql_requests_are_not_misclassified_as_destructive(message: str) -> None:
