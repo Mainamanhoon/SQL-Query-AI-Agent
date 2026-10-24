@@ -5,8 +5,8 @@ refine it in a follow-up, or paste a query for debugging or optimization. Genera
 SQL is checked with SQLGlot and executed through an independently restricted SQLite
 connection before it is returned to the browser.
 
-Source, tests, and Docker images are included. Live model testing needs
-`LLM_API_KEY` and `LLM_MODEL`; no model responses are simulated in the application.
+Source, tests, and Docker images are included. No model responses are simulated in
+the application.
 
 ## Setup and run
 
@@ -18,9 +18,18 @@ the model key; the frontend never receives it.
 Create a local environment file and set a model supported by your OpenAI-compatible
 provider. For OpenRouter, for example:
 
+PowerShell:
+
 ```powershell
 Copy-Item .env.example .env
 notepad .env
+```
+
+macOS/Linux:
+
+```sh
+cp .env.example .env
+nano .env
 ```
 
 ```dotenv
@@ -36,22 +45,9 @@ Keep `.env` local. It is ignored by Git and must not be committed.
 
 Requires Docker Desktop or Docker Engine with Compose. From the repository root:
 
-PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-docker compose up --build -d
-```
-
-macOS/Linux:
-
 ```sh
-cp .env.example .env
 docker compose up --build -d
 ```
-
-Edit `.env` before starting and set `LLM_API_KEY`, `LLM_MODEL`, and (if needed)
-`LLM_BASE_URL`.
 
 Compose starts the backend on port 8000 and the Vite frontend on port 8080. Open
 `http://localhost:8080`; API docs remain at `http://localhost:8000/docs`.
