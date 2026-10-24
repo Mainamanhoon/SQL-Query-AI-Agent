@@ -20,3 +20,5 @@ test-results/
 playwright-report/
 artifacts/
 .DS_Store
+
+.vercel
