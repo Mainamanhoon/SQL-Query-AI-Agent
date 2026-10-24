@@ -87,7 +87,7 @@ the configured provider; result rows are not sent for explanation.
 - Repository: https://github.com/Mainamanhoon/SQL-Query-AI-Agent
 - Live application: https://sql-query-ai-agent-frontend.vercel.app
 - Backend/API: https://sql-query-ai-agent-backend.vercel.app
-- Demo video: record a 3–5 minute walkthrough using [the demo script](docs/demo-script.md)
+- Demo video: add the required 3–5 minute walkthrough link before submission
 
 ## Architecture
 
@@ -117,7 +117,7 @@ frontend/
   src/components/ ChatWindow, SQLPanel, ExplanationBox, ResultsTable
   src/hooks/      Conversation state and request cancellation
   src/services/   Typed API client and safe CSV export
-docs/             Schema, workflow/design notes, demo script, evaluation checklist
+docs/             Schema, workflow/design notes, evaluation checklist
 ```
 
 ### LangGraph validation loop
