@@ -1,6 +1,7 @@
 """Single-purpose LangGraph nodes with injected services."""
 
 import asyncio
+import json
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -31,6 +32,88 @@ class AgentDependencies:
     model: LanguageModel
 
 
+def _model_json_object(raw: str) -> Dict[str, Any]:
+    """Extract one JSON object from a model response without executing content.
+
+    Args:
+        raw: Model response that may contain a JSON fence or short surrounding prose.
+
+    Returns:
+        Parsed JSON object for subsequent Pydantic validation.
+
+    Raises:
+        ValueError: If no single JSON object can be parsed.
+    """
+    normalized = raw.strip()
+    if normalized.startswith("```"):
+        normalized = re.sub(r"^```(?:json)?\s*", "", normalized, flags=re.IGNORECASE)
+        normalized = re.sub(r"\s*```$", "", normalized)
+    if not normalized.startswith("{"):
+        match = re.search(r"\{[\s\S]*\}", normalized)
+        if match is None:
+            raise ValueError("Model response did not contain a JSON object.")
+        normalized = match.group(0)
+    value = json.loads(normalized)
+    if not isinstance(value, dict):
+        raise ValueError("Model response JSON must be an object.")
+    return value
+
+
+def _explicit_intent(message: str, previous_sql: str | None) -> str | None:
+    """Recognize unambiguous SQL task wording before model classification.
+
+    Args:
+        message: Latest user request, treated as untrusted text.
+        previous_sql: Server-provided prior query, if this is a follow-up turn.
+
+    Returns:
+        ``debug`` or ``optimize`` for explicit SQL tasks, otherwise ``None`` so
+        the injected router model can handle normal questions and clarification.
+    """
+    has_sql = bool(re.search(r"\b(?:SELECT|WITH)\b", message, re.IGNORECASE))
+    has_previous_sql = bool(previous_sql and previous_sql.strip())
+    if not (has_sql or has_previous_sql):
+        return None
+    if re.search(
+        r"\b(?:optimi[sz]e|optimization|performance|faster|readability|index|"
+        r"unnecessary\s+joins?)\b",
+        message,
+        re.IGNORECASE,
+    ):
+        return "optimize"
+    if re.search(
+        r"\b(?:debug|validate|correct|fix|error|invalid|syntax|check)\b|"
+        r"\b(?:is|does)\s+(?:this|the)\s+(?:sql|query)\b",
+        message,
+        re.IGNORECASE,
+    ):
+        return "debug"
+    return None
+
+
+def _obviously_out_of_scope(message: str, previous_sql: str | None) -> bool:
+    """Recognize common non-SQL requests without misclassifying database questions.
+
+    Args:
+        message: Latest user request.
+        previous_sql: Existing SQL context, if any.
+
+    Returns:
+        True only for strong out-of-scope signals with no SQL context.
+    """
+    if re.search(r"\b(?:SELECT|WITH)\b", message, re.IGNORECASE) or previous_sql:
+        return False
+    return bool(
+        re.search(
+            r"\b(?:fifa|world\s+cup|politic(?:s)?|president|election|football|nba|nfl|"
+            r"weather|creative\s+writing|poem|poetry|song\s+lyrics|write\s+a\s+story|"
+            r"tell\s+a\s+joke|python\s+programming|javascript\s+code)\b",
+            message,
+            re.IGNORECASE,
+        )
+    )
+
+
 async def router_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
     """Classify the latest user request without generating or executing SQL.
 
@@ -48,11 +131,17 @@ async def router_node(state: AgentState, dependencies: AgentDependencies) -> Dic
         build_messages(ROUTER_PROMPT, state, dependencies.database.schema), json_output=True
     )
     try:
-        decision = IntentDecision.model_validate_json(raw)
-    except ValidationError as error:
+        decision = IntentDecision.model_validate(_model_json_object(raw))
+    except (ValidationError, ValueError, json.JSONDecodeError) as error:
         raise ModelUnavailableError(
             "The model returned an invalid routing response. Try again."
         ) from error
+    if _obviously_out_of_scope(message, state["previous_sql"]):
+        decision.intent = "out_of_scope"
+        decision.clarification = ""
+    explicit_intent = _explicit_intent(message, state["previous_sql"])
+    if explicit_intent is not None:
+        decision.intent = explicit_intent
     return decision.model_dump()
 
 
@@ -183,6 +272,28 @@ def safe_explanation(text: str) -> bool:
     )
 
 
+def _default_optimization_tips(sql: str) -> list[str]:
+    """Build conservative optimization prose when a model omits required tips."""
+    tips = [
+        (
+            "Use an index on columns used repeatedly in WHERE or JOIN predicates, and confirm "
+            "it helps with EXPLAIN QUERY PLAN before adding it."
+        ),
+    ]
+    if re.search(r"\bJOIN\b", sql, re.IGNORECASE):
+        tips.append(
+            "The join should remain only when its columns or filtering are needed; otherwise "
+            "remove it to avoid unnecessary row work."
+        )
+    if re.search(r"SELECT\s+\*", sql, re.IGNORECASE):
+        tips.append("Select only the columns the client needs instead of using SELECT *.")
+    else:
+        tips.append(
+            "The query already projects explicit columns, which keeps result transfer focused."
+        )
+    return tips[:6]
+
+
 async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
     """Explain the successful query and any debugging or optimization changes.
 
@@ -197,7 +308,7 @@ async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> 
         build_messages(EXPLAINER_PROMPT, state, dependencies.database.schema), json_output=True
     )
     try:
-        explanation = Explanation.model_validate_json(raw)
+        explanation = Explanation.model_validate(_model_json_object(raw))
         texts = [
             explanation.explanation,
             explanation.original_error or "",
@@ -211,6 +322,10 @@ async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> 
             and not explanation.original_error
         ):
             explanation = explanation.model_copy(update={"original_error": state["original_error"]})
+        if state["intent"] == "optimize" and not explanation.optimization_tips:
+            explanation = explanation.model_copy(
+                update={"optimization_tips": _default_optimization_tips(state["generated_sql"])}
+            )
         if state["intent"] == "optimize" and not explanation.optimization_tips:
             raise ValueError("Optimization advice is missing.")
     except (ValidationError, ValueError) as error:

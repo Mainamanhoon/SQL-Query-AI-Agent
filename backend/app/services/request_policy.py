@@ -28,10 +28,31 @@ def requests_destructive_operation(message: str) -> bool:
             return True
     except SqlglotError:
         pass
+    write_verbs = (
+        r"drop|delete|truncate|erase|remove|update|insert|alter|replace|upsert|merge|"
+        r"purge|wipe|clear|write|save|persist"
+    )
+    data_targets = (
+        r"all|every|data|value|values|row|rows|record|records|table|tables|database|schema|"
+        r"column|columns|index|user|users|customer|customers|order|orders|product|products|"
+        r"orderitems"
+    )
+    if re.search(
+        rf"\b(?:{write_verbs})\b[\s\S]{{0,100}}\b(?:{data_targets})\b",
+        message,
+        re.IGNORECASE,
+    ):
+        return True
+    if re.search(
+        r"\bcreate\b[\s\S]{0,40}\b(?:table|index|view|trigger|database|schema)\b",
+        message,
+        re.IGNORECASE,
+    ):
+        return True
     return bool(
         re.search(
-            r"\b(drop|delete|truncate|erase|remove|update|insert|alter)\s+"
-            r"(all\b|every\b|the\b|table\b|from\b|into\b|users\b|orders\b|products\b|orderitems\b)",
+            r"\b(?:modify|change|set)\b[\s\S]{0,100}\b(?:row|record|user|users|"
+            r"customer|customers|order|orders|product|products|state|column|table|schema)\b",
             message,
             re.IGNORECASE,
         )

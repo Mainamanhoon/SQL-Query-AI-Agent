@@ -6,6 +6,7 @@ from app.agent.nodes import AgentDependencies, validation_node
 from app.api.routes import initial_state
 from app.models.chat import ChatRequest
 from app.services.database import DatabaseService
+from app.services.request_policy import requests_destructive_operation
 from app.services.sql_validation import SQLValidationError, SQLValidator
 
 
@@ -70,6 +71,9 @@ def test_rejects_unsafe_or_invalid_sql(database: DatabaseService, sql: str) -> N
         ("SELECT name AS customer FROM Users ORDER BY customer", 6),
         ("SELECT p.price_cents / 100.0 AS price FROM Products p", 6),
         ("SELECT state, COUNT(*) AS user_count FROM Users GROUP BY state", 4),
+        ("SELECT CAST(price_cents AS REAL) FROM Products", 6),
+        ("SELECT CURRENT_DATE FROM Users", 6),
+        ("SELECT CASE WHEN state='California' THEN 1 ELSE 0 END FROM Users", 6),
     ],
 )
 def test_valid_queries_resolve_scopes_and_execute(
@@ -89,3 +93,30 @@ def test_validation_node_records_error_and_increments_once(database: DatabaseSer
     assert update["is_valid"] is False
     assert update["retry_count"] == 1
     assert "Exactly one" in update["error_msg"]
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Delete user 1",
+        "Please drop the users table",
+        "Set every customer's state to Texas",
+        "Create an index on Users.state",
+        "Modify the data for this customer",
+    ],
+)
+def test_destructive_requests_are_rejected_before_generation(message: str) -> None:
+    """Natural-language write requests cannot rely on the model to refuse them."""
+    assert requests_destructive_operation(message)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Create a query to list users",
+        "Optimize this query by removing unnecessary joins",
+    ],
+)
+def test_read_only_sql_requests_are_not_misclassified_as_destructive(message: str) -> None:
+    """Query composition and optimization wording remains allowed."""
+    assert not requests_destructive_operation(message)

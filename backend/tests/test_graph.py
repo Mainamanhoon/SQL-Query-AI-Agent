@@ -220,3 +220,59 @@ async def test_invalid_debug_query_keeps_validator_error_when_model_omits_it(
     assert result["status"] == "success"
     assert result["original_error"]
     assert "declared foreign-key relationship" in result["original_error"]
+
+
+async def test_explicit_out_of_scope_wording_overrides_model_route(
+    database: DatabaseService,
+) -> None:
+    """Obvious sports requests are rejected even if a router model guesses query."""
+    model = ScriptedModel([decision("query")])
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(initial_state(ChatRequest(message="Who won the FIFA World Cup?")))
+    assert result["status"] == "rejected"
+    assert result["generated_sql"] == ""
+
+
+async def test_optimization_returns_advice_when_model_omits_tips(
+    database: DatabaseService,
+) -> None:
+    """Optimization always returns prose advice without emitting index DDL."""
+    model = ScriptedModel(
+        [
+            decision("query"),
+            "SELECT state, COUNT(*) AS user_count FROM Users GROUP BY state",
+            explanation(),
+        ]
+    )
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(
+        initial_state(
+            ChatRequest(
+                message=(
+                    "Optimize this SQL: SELECT state, COUNT(*) AS user_count "
+                    "FROM Users GROUP BY state"
+                )
+            )
+        )
+    )
+    assert result["status"] == "success"
+    assert result["optimization_tips"]
+    assert all("CREATE INDEX" not in tip.upper() for tip in result["optimization_tips"])
+
+
+async def test_fenced_json_model_responses_are_accepted(database: DatabaseService) -> None:
+    """Common provider JSON fences do not turn a valid request into a 503."""
+    fenced_explanation = (
+        '```json\n{"explanation":"Lists users.","original_error":null,'
+        '"optimization_tips":[]}\n```'
+    )
+    model = ScriptedModel(
+        [
+            '```json\n{"intent":"query","destructive":false,"clarification":""}\n```',
+            "SELECT name FROM Users",
+            fenced_explanation,
+        ]
+    )
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(initial_state(ChatRequest(message="Show users")))
+    assert result["status"] == "success"
