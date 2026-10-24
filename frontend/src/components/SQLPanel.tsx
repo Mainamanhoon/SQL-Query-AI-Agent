@@ -63,6 +63,16 @@ export function SQLPanel({ query, retries, running, darkMode = false, onRun }: P
     }
   }
 
+  function toggleEditing(): void {
+    if (editing && !editedQuery.trim() && query) {
+      // An empty editor is not a new query. Restore the last validated result
+      // instead of leaving the workspace visually disconnected from the response.
+      setEditedQuery(query);
+    }
+    setEditing((value) => !value);
+    setRunError(null);
+  }
+
   return (
     <section className="workspace-card sql-card" aria-label="Generated SQL">
       <div className="card-heading">
@@ -83,13 +93,11 @@ export function SQLPanel({ query, retries, running, darkMode = false, onRun }: P
           <button
             className="small-button"
             type="button"
-            onClick={() => {
-              setEditing((value) => !value);
-              setRunError(null);
-            }}
+            onClick={toggleEditing}
             disabled={!query || running}
           >
-            <Pencil size={13} /> {editing ? 'Done' : 'Edit SQL'}
+            <Pencil size={13} />{' '}
+            {editing ? (editedQuery.trim() ? 'Done' : 'Restore SQL') : 'Edit SQL'}
           </button>
           <button
             className="run-button"
