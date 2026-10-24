@@ -210,7 +210,7 @@ async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> 
             and state["original_error"]
             and not explanation.original_error
         ):
-            raise ValueError("Debugging explanation is missing.")
+            explanation = explanation.model_copy(update={"original_error": state["original_error"]})
         if state["intent"] == "optimize" and not explanation.optimization_tips:
             raise ValueError("Optimization advice is missing.")
     except (ValidationError, ValueError) as error:

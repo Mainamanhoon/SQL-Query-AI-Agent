@@ -193,3 +193,30 @@ async def test_invalid_debug_query_explains_original_error(
     assert result["status"] == "success"
     assert result["generated_sql"]
     assert "fullname" in result["original_error"]
+
+
+async def test_invalid_debug_query_keeps_validator_error_when_model_omits_it(
+    database: DatabaseService,
+) -> None:
+    """A malformed explanation cannot erase the validator's original diagnosis."""
+    model = ScriptedModel(
+        [
+            decision("debug"),
+            "SELECT orders.id, users.name FROM Orders JOIN Users ON Orders.user_id = Users.id",
+            explanation(),
+        ]
+    )
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(
+        initial_state(
+            ChatRequest(
+                message=(
+                    "Check this SQL: SELECT orders.id, users.name FROM Orders "
+                    "JOIN Users"
+                )
+            )
+        )
+    )
+    assert result["status"] == "success"
+    assert result["original_error"]
+    assert "declared foreign-key relationship" in result["original_error"]
