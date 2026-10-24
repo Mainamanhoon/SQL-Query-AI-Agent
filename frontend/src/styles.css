@@ -187,19 +187,29 @@ button svg {
   max-height: 185px;
   overflow-y: auto;
 }
+.session-item-row {
+  display: flex;
+  align-items: stretch;
+  border-radius: 6px;
+}
+.session-item-row:hover,
+.session-item-row-active {
+  background: #e5eade;
+}
 .session-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 8px 10px;
   border-radius: 6px;
   color: #697661;
   text-align: left;
 }
-.session-item:hover,
-.session-item-active {
-  background: #e5eade;
+.session-item-row .session-item:hover,
+.session-item-row-active .session-item {
+  background: transparent;
   color: #385237;
 }
 .session-item > span {
@@ -211,6 +221,23 @@ button svg {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.session-delete {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 5px;
+  color: #9aa493;
+  opacity: 0;
+}
+.session-item-row:hover .session-delete,
+.session-item-row-active .session-delete,
+.session-delete:focus-visible {
+  opacity: 1;
+}
+.session-delete:hover {
+  background: #d9e3d0;
+  color: #ad5e57;
 }
 .session-item strong {
   font-size: 12px;
@@ -1311,8 +1338,8 @@ button svg {
 }
 .theme-dark .workspace-avatar,
 .theme-dark .sidebar-active,
-.theme-dark .session-item:hover,
-.theme-dark .session-item-active,
+.theme-dark .session-item-row:hover,
+.theme-dark .session-item-row-active,
 .theme-dark .message-user p,
 .theme-dark .suggestion,
 .theme-dark .language-tag {
@@ -1326,8 +1353,15 @@ button svg {
   border-color: #3a4e3c;
 }
 .theme-dark .new-chat:hover,
-.theme-dark .suggestion:hover {
+.theme-dark .suggestion:hover,
+.theme-dark .session-delete:hover {
   background: #2b3e2d;
+}
+.theme-dark .session-delete {
+  color: #8fa594;
+}
+.theme-dark .session-delete:hover {
+  color: #f0a39a;
 }
 .theme-dark .sidebar-label,
 .theme-dark .sidebar-workspace small,

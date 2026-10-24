@@ -112,6 +112,7 @@ export default function App() {
             chat.selectSession(sessionId);
             setSidebarOpen(false);
           }}
+          onDelete={chat.deleteSession}
         />
         <div className="schema-heading">
           <span className="sidebar-label">DATABASE SCHEMA</span>

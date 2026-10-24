@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   listSessions,
+  deleteSession as deleteSessionRequest,
   runSQL as runSQLRequest,
   sendMessageStream,
   syncSession,
@@ -306,6 +307,34 @@ export function useChat() {
     }));
   }
 
+  async function deleteSession(sessionId: string): Promise<void> {
+    const session = sessionState.sessions.find((item) => item.id === sessionId);
+    if (!session) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Delete "${session.title}"?`)) return;
+
+    cancelRequests();
+    setError(null);
+    try {
+      await deleteSessionRequest(sessionId);
+      setSessionState((current) => {
+        const remainingSessions = current.sessions.filter((item) => item.id !== sessionId);
+        if (remainingSessions.length) {
+          return {
+            sessions: remainingSessions,
+            activeSessionId:
+              current.activeSessionId === sessionId
+                ? remainingSessions[0].id
+                : current.activeSessionId,
+          };
+        }
+        const replacementSession = createSession();
+        return { sessions: [replacementSession], activeSessionId: replacementSession.id };
+      });
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not delete conversation.');
+    }
+  }
+
   function setSelectedResponse(response: ChatResponse): void {
     if (!activeSession) return;
     updateSession(activeSession.id, (session) => ({ ...session, selectedResponse: response }));
@@ -326,6 +355,7 @@ export function useChat() {
     activeSessionId: sessionState.activeSessionId,
     setSelectedResponse,
     selectSession,
+    deleteSession,
     newSession,
     send,
     runSql,

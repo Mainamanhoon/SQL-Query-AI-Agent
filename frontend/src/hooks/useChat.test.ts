@@ -154,6 +154,32 @@ describe('conversation state', () => {
     expect(restored.result.current.messages).toHaveLength(2);
   });
 
+  it('deletes a conversation through the server and keeps an empty replacement active', async () => {
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input).endsWith('/sessions') && !String(input).includes('/sessions/')) {
+        return response({ sessions: [] });
+      }
+      if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+      return response(success);
+    });
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.send('Show users');
+    });
+    const deletedSessionId = result.current.activeSessionId;
+
+    await act(async () => {
+      await result.current.deleteSession(deletedSessionId);
+    });
+
+    const deleteCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE');
+    expect(deleteCall?.[0]).toContain(`/sessions/${deletedSessionId}`);
+    expect(result.current.sessions).toHaveLength(1);
+    expect(result.current.activeSessionId).not.toBe(deletedSessionId);
+    expect(result.current.messages).toHaveLength(0);
+  });
+
   it('ignores a stale response after starting a new conversation', async () => {
     let resolve!: (response: Response) => void;
     fetchMock.mockReturnValue(
