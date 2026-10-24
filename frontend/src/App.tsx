@@ -102,9 +102,6 @@ export default function App() {
           <Plus size={16} /> New conversation <span>↗</span>
         </button>
         <div className="sidebar-label">WORKSPACE</div>
-        <div className="sidebar-active">
-          <MessageSquareCode size={17} /> SQL assistant <span className="active-dot" />
-        </div>
         <SessionList
           sessions={chat.sessions}
           activeSessionId={chat.activeSessionId}
@@ -163,15 +160,6 @@ export default function App() {
           )}
         </nav>
         <div className="sidebar-bottom">
-          <div className="safety-card">
-            <ShieldCheck size={18} />
-            <strong>Safe to explore</strong>
-            <p>
-              Every query is checked.
-              <br />
-              Your database is read-only.
-            </p>
-          </div>
           <button className="help-button" onClick={() => setHelpOpen(!helpOpen)}>
             <CircleHelp size={16} /> How it works
           </button>
