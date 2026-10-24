@@ -76,6 +76,7 @@ to backend `CORS_ORIGINS`. Use `npm.cmd` instead of `npm` if PowerShell blocks n
 | `LLM_MODEL` | empty | Model ID from your chosen provider |
 | `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible chat-completions base URL |
 | `LLM_TIMEOUT_SECONDS` | `30` | Deadline for each provider request |
+| `LLM_MAX_TOKENS` | `1000` | Maximum completion budget per model call |
 | `DATABASE_PATH` | `./ecommerce.db` | Existing SQLite file; containers set their own absolute path |
 | `QUERY_TIMEOUT_SECONDS` | `2` | SQLite progress-handler deadline |
 | `QUERY_ROW_LIMIT` | `200` | Returned row cap, with visible truncation status |

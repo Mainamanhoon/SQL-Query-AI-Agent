@@ -29,7 +29,14 @@ class LanguageModel(Protocol):
 class HTTPChatModel:
     """Call a configured chat-completions endpoint without coupling nodes to a vendor."""
 
-    def __init__(self, client: httpx.AsyncClient, api_key: str, base_url: str, model: str) -> None:
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        api_key: str,
+        base_url: str,
+        model: str,
+        max_tokens: int = 1000,
+    ) -> None:
         """Store injected transport and provider settings without making requests.
 
         Args:
@@ -37,11 +44,13 @@ class HTTPChatModel:
             api_key: Server-only provider credential.
             base_url: OpenAI-compatible API base URL.
             model: Provider-specific model identifier.
+            max_tokens: Maximum completion budget requested from the provider.
         """
         self.client = client
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.max_tokens = max_tokens
 
     async def complete(self, messages: List[BaseMessage], json_output: bool = False) -> str:
         """Request a bounded completion, keeping provider errors and credentials private.
@@ -69,7 +78,7 @@ class HTTPChatModel:
             "messages": [
                 {"role": roles[message.type], "content": message.content} for message in messages
             ],
-            "max_tokens": 1800,
+            "max_tokens": self.max_tokens,
         }
         if json_output:
             payload["response_format"] = {"type": "json_object"}

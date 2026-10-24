@@ -52,6 +52,7 @@ def create_app(
                 configuration.llm_api_key.get_secret_value(),
                 configuration.llm_base_url,
                 configuration.llm_model,
+                configuration.llm_max_tokens,
             )
             application.state.database = database
             application.state.model_configured = bool(
