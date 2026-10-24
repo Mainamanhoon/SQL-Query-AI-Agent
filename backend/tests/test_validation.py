@@ -58,6 +58,7 @@ def test_rejects_unsafe_or_invalid_sql(database: DatabaseService, sql: str) -> N
     [
         ("SELECT * FROM Users", 6),
         ("SELECT name FROM Users WHERE state='California'", 3),
+        ("SELECT name FROM Users WHERE name LIKE '%Aman%' AND state='California'", 0),
         ("SELECT u.name FROM Users u JOIN Orders o ON u.id=o.user_id", 6),
         (
             "SELECT u.name FROM Users u JOIN Orders o ON o.user_id=u.id "

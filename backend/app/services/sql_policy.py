@@ -6,6 +6,8 @@ READ_ONLY_SQL_FUNCTIONS: FrozenSet[str] = frozenset(
     {
         # Aggregates and window functions used for read-only analytics.
         "avg",
+        # Boolean operators are represented as Func nodes by SQLGlot.
+        "and",
         "cast",
         "case",
         "count",
@@ -59,6 +61,7 @@ READ_ONLY_SQL_FUNCTIONS: FrozenSet[str] = frozenset(
         "mod",
         "nullif",
         "octet_length",
+        "or",
         "pow",
         "power",
         "printf",
@@ -87,6 +90,7 @@ READ_ONLY_SQL_FUNCTIONS: FrozenSet[str] = frozenset(
         "unicode",
         "unixepoch",
         "upper",
+        "xor",
         "zeroblob",
         # JSON1 functions are read-only when available in the SQLite build.
         "json",

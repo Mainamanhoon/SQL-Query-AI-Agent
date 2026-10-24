@@ -262,7 +262,7 @@ npm run build
 npm test
 ```
 
-Current checks: **97 backend tests and 11 frontend tests**. Backend tests use the real
+Current checks: **98 backend tests and 11 frontend tests**. Backend tests use the real
 seeded SQLite database and a scripted model, including repair after AST/schema and
 SQLite errors. Frontend tests exercise the actual HTTP client with controlled
 responses. These tests do not establish live LLM accuracy.
