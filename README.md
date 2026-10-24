@@ -82,6 +82,13 @@ The provider must support `/chat/completions`, JSON-object response mode, and
 nodes do not depend on a vendor SDK. Conversation and schema context are sent to
 the configured provider; result rows are not sent for explanation.
 
+## Submission links
+
+- Repository: https://github.com/Mainamanhoon/SQL-Query-AI-Agent
+- Live application: https://sql-query-ai-agent-frontend.vercel.app
+- Backend/API: https://sql-query-ai-agent-backend.vercel.app
+- Demo video: record a 3–5 minute walkthrough using [the demo script](docs/demo-script.md)
+
 ## Architecture
 
 ```mermaid

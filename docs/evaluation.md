@@ -41,7 +41,7 @@ record the provider/model and outcomes. Do not report these as passed until run.
 - [x] Backend/frontend tests and Dockerfiles
 - [x] README, architecture, prompts, schema, and deployment configuration
 - [ ] Configure provider credentials and verify live model accuracy
-- [ ] Deploy and verify a public application URL
+- [x] Deploy and verify a public application URL
 - [ ] Record a real 3–5 minute demo and add its link
 
 The unchecked items are delivery requirements, not optional bonuses.
