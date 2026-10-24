@@ -198,10 +198,12 @@ call. `/schema` exposes the sample schema; `/health` reports database readiness 
 model configuration presence. `/api/*` aliases support the frontend proxy. Model
 configuration presence is not a live-provider health test.
 
-Conversation history lives in browser memory and is sent with each turn. This avoids
-shared server conversation state and cross-user leakage; a page refresh starts a new
-conversation. Selecting an older result only changes the displayed result, not the
-latest conversational query. New conversation aborts pending client requests.
+Conversation sessions are persisted in the browser under the `querydesk.sessions.v1`
+local-storage key. The UI keeps up to 20 sessions and 60 messages per session, while
+each request sends only the latest 30 messages to the backend. No server-side chat
+database is used, avoiding shared conversation state and cross-user leakage. Selecting
+an older session restores its messages and previous SQL; a new conversation starts a
+separate session. New conversation aborts pending client requests.
 
 ## Verification
 

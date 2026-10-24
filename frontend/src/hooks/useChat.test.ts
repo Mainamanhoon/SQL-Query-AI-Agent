@@ -34,6 +34,7 @@ function response(body: unknown, status = 200) {
 describe('conversation state', () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    localStorage.clear();
     vi.stubGlobal('fetch', fetchMock);
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -108,6 +109,24 @@ describe('conversation state', () => {
       sql: 'SELECT state, COUNT(*) FROM Users GROUP BY state',
     });
     expect(result.current.selectedResponse?.query_results?.rows).toEqual([['California', 3]]);
+  });
+
+  it('keeps multiple sessions in browser storage and restores their messages', async () => {
+    fetchMock.mockResolvedValue(response(success));
+    const first = renderHook(() => useChat());
+    await act(async () => {
+      await first.result.current.send('Show users');
+    });
+    const savedSessionId = first.result.current.activeSessionId;
+    act(() => first.result.current.newSession());
+    expect(first.result.current.sessions).toHaveLength(2);
+    act(() => first.result.current.selectSession(savedSessionId));
+    expect(first.result.current.messages).toHaveLength(2);
+
+    first.unmount();
+    const restored = renderHook(() => useChat());
+    expect(restored.result.current.sessions).toHaveLength(2);
+    expect(restored.result.current.messages).toHaveLength(2);
   });
 
   it('ignores a stale response after starting a new conversation', async () => {

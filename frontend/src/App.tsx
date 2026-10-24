@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { ChatWindow } from './components/ChatWindow';
 import { ExplanationBox } from './components/ExplanationBox';
 import { ResultsTable } from './components/ResultsTable';
+import { SessionList } from './components/SessionList';
 import { SQLPanel } from './components/SQLPanel';
 import { useChat } from './hooks/useChat';
 import { getHealth, getSchema } from './services/api';
@@ -82,7 +83,7 @@ export default function App() {
         <button
           className="new-chat"
           onClick={() => {
-            chat.reset();
+            chat.newSession();
             setConversationVersion((value) => value + 1);
             setSidebarOpen(false);
           }}
@@ -93,6 +94,14 @@ export default function App() {
         <div className="sidebar-active">
           <MessageSquareCode size={17} /> SQL assistant <span className="active-dot" />
         </div>
+        <SessionList
+          sessions={chat.sessions}
+          activeSessionId={chat.activeSessionId}
+          onSelect={(sessionId) => {
+            chat.selectSession(sessionId);
+            setSidebarOpen(false);
+          }}
+        />
         <div className="schema-heading">
           <span className="sidebar-label">DATABASE SCHEMA</span>
           <span>{schema ? Object.keys(schema.tables).length : '—'} tables</span>

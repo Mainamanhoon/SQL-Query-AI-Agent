@@ -169,6 +169,58 @@ button svg {
   background: #6b8b50;
   margin-left: auto;
 }
+.session-history {
+  margin: -15px 0 25px;
+}
+.session-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 10px;
+  color: #8a9581;
+}
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 8px;
+  max-height: 185px;
+  overflow-y: auto;
+}
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #697661;
+  text-align: left;
+}
+.session-item:hover,
+.session-item-active {
+  background: #e5eade;
+  color: #385237;
+}
+.session-item > span {
+  min-width: 0;
+}
+.session-item strong,
+.session-item small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-item strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.session-item small {
+  margin-top: 2px;
+  color: #929d8c;
+  font-size: 10px;
+}
 .schema-heading {
   display: flex;
   align-items: center;

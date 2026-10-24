@@ -35,6 +35,16 @@ export interface ChatMessage {
   response?: ChatResponse;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+  previousSql: string | null;
+  selectedResponse: ChatResponse | null;
+}
+
 export interface DatabaseSchema {
   ddl: string;
   tables: Record<
