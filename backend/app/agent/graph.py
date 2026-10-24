@@ -18,6 +18,7 @@ from app.agent.nodes import (
     router_node,
     schema_retrieval_node,
     scope_validation_node,
+    semantic_validation_node,
     sql_generator_node,
     validation_node,
 )
@@ -49,30 +50,36 @@ def route_schema(state: AgentState) -> Literal["inspect_debug", "generate"]:
 
 def route_debug_inspection(
     state: AgentState,
-) -> Literal["clarify", "generate", "optimization"]:
+) -> Literal["clarify", "generate", "semantic"]:
     """Route an inspected debug request to repair or the safe execution pipeline.
 
-    A context correction is already validated by ``debug_inspection_node`` and can
-    therefore continue through optimization, execution, and explanation without an
-    unnecessary model generation call.
+    A context correction is already validated by ``debug_inspection_node``; it still
+    passes through the independent semantic reviewer before execution.
     """
     if state["intent"] == "clarify":
         return "clarify"
     if state["context_corrected"]:
-        return "optimization"
+        return "semantic"
     return "generate"
 
 
-def route_validation(state: AgentState) -> Literal["optimization", "generate", "fallback"]:
-    """Select execution, repair, or terminal fallback after validation.
+def route_validation(state: AgentState) -> Literal["semantic", "generate", "fallback"]:
+    """Select semantic review, repair, or terminal fallback after validation.
 
     Args:
         state: Validation result and failure count.
 
     Returns:
-        Optimization, repair, or terminal fallback node name.
+        Semantic review, repair, or terminal fallback node name.
     """
     if state["is_valid"]:
+        return "semantic"
+    return "fallback" if state["retry_count"] >= 3 else "generate"
+
+
+def route_semantic(state: AgentState) -> Literal["optimization", "generate", "fallback"]:
+    """Route semantic approval to execution or retry the bounded repair loop."""
+    if state["semantic_valid"]:
         return "optimization"
     return "fallback" if state["retry_count"] >= 3 else "generate"
 
@@ -108,6 +115,7 @@ def build_graph(dependencies: AgentDependencies) -> CompiledStateGraph:
     graph.add_node("generate", partial(sql_generator_node, dependencies=dependencies))
     graph.add_node("inspect_debug", partial(debug_inspection_node, dependencies=dependencies))
     graph.add_node("validate", partial(validation_node, dependencies=dependencies))
+    graph.add_node("semantic", partial(semantic_validation_node, dependencies=dependencies))
     graph.add_node("execute", partial(executor_node, dependencies=dependencies))
     graph.add_node("explain", partial(explainer_node, dependencies=dependencies))
     graph.add_node("clarify", clarification_node)
@@ -120,6 +128,7 @@ def build_graph(dependencies: AgentDependencies) -> CompiledStateGraph:
     graph.add_conditional_edges("inspect_debug", route_debug_inspection)
     graph.add_edge("generate", "validate")
     graph.add_conditional_edges("validate", route_validation)
+    graph.add_conditional_edges("semantic", route_semantic)
     graph.add_edge("optimization", "execute")
     graph.add_conditional_edges("execute", route_execution)
     for terminal_node in ["explain", "clarify", "reject", "fallback"]:

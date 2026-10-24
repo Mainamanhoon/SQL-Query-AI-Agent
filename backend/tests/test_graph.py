@@ -38,6 +38,19 @@ def explanation(**fields: object) -> str:
     return json.dumps({"explanation": "Lists users in the requested state.", **fields})
 
 
+def semantic_decision(matches_request: bool, reason: str = "") -> str:
+    """Create a structured semantic-review response for a graph test."""
+    return json.dumps(
+        {
+            "matches_request": matches_request,
+            "reason": reason,
+            "suggested_corrections": ["Add the requested state predicate."]
+            if not matches_request
+            else [],
+        }
+    )
+
+
 @pytest.mark.parametrize(
     "bad_sql",
     [
@@ -83,6 +96,39 @@ async def test_graph_stops_after_three_failed_attempts(database: DatabaseService
     assert result["generated_sql"] == ""
     assert result["query_results"] is None
     assert len(model.calls) == 4
+
+
+async def test_semantic_reviewer_repairs_a_valid_but_wrong_query(
+    database: DatabaseService,
+) -> None:
+    """A semantically wrong SELECT is repaired before it reaches SQLite execution."""
+    model = ScriptedModel(
+        [
+            decision(),
+            "SELECT name FROM Users",
+            "SELECT name FROM Users WHERE state='California'",
+            explanation(),
+        ]
+    )
+    semantic_model = ScriptedModel(
+        [
+            semantic_decision(
+                False,
+                "The request asks for California users, but the query has no state filter.",
+            ),
+            semantic_decision(True),
+        ]
+    )
+    graph = build_graph(
+        AgentDependencies(database, SQLValidator(database.schema), model, semantic_model)
+    )
+    result = await graph.ainvoke(
+        initial_state(ChatRequest(message="Show users from California"))
+    )
+    assert result["status"] == "success"
+    assert result["retry_count"] == 1
+    assert result["query_results"].rows == [["Maya Chen"], ["Ava Patel"], ["Owen Davis"]]
+    assert len(semantic_model.calls) == 2
 
 
 async def test_followup_keeps_previous_sql_and_messages(database: DatabaseService) -> None:

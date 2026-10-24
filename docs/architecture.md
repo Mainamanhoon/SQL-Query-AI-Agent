@@ -23,6 +23,7 @@ worker threads never reuse another request's connection.
 | Debug inspector | Validate supplied debug SQL and preserve the original error |
 | Generator | Generate or repair a SQL candidate for the chosen intent |
 | Validator | Enforce AST shape, identifiers, and supported joins |
+| Semantic reviewer | Use a dedicated JSON-only LLM call to compare validated SQL with the request and prior context |
 | Executor | Execute already validated SQL through the restricted database service |
 | Explainer | Explain the successful query and debugging/optimization details |
 | Terminal nodes | Return clarification, refusal, or retry-exhaustion text |
@@ -61,6 +62,14 @@ Canonical SQL is regenerated from the checked AST, rather than executing a diffe
 original string. A failed SQLite statement returns to generation with the canonical
 SQL that actually failed. This matters because SQLGlot's accepted syntax is broader
 than SQLite's executable syntax.
+
+After AST/schema validation, the production semantic-review node makes a separate
+JSON-only LLM call with a dedicated prompt. It can reject a syntactically valid but
+meaningfully wrong candidate, such as a California request without a California
+predicate. The rejection increments the same bounded retry counter and includes the
+reviewer's reason in the next generator context. The reviewer never authorizes SQL,
+executes SQL, or replaces the AST and database safety boundary. Test graphs can omit
+this injected reviewer to keep deterministic node tests focused on one responsibility.
 
 The metadata connection accepts only application-controlled discovery queries. It
 never accepts generated SQL. Runtime query connections are independently read-only

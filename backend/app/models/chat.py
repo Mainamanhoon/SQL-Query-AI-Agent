@@ -110,5 +110,13 @@ class Explanation(BaseModel):
     optimization_tips: List[str] = Field(default_factory=list, max_length=6)
 
 
+class SemanticDecision(BaseModel):
+    """Structured result from the independent natural-language/SQL reviewer."""
+
+    matches_request: bool
+    reason: str = Field(default="", max_length=2000)
+    suggested_corrections: List[str] = Field(default_factory=list, max_length=6)
+
+
 PersistedChatMessage.model_rebuild()
 ChatSession.model_rebuild()

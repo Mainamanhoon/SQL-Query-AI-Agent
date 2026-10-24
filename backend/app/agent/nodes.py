@@ -14,10 +14,11 @@ from app.agent.prompts import (
     EXPLAINER_PROMPT,
     GENERATOR_PROMPT,
     ROUTER_PROMPT,
+    SEMANTIC_VALIDATOR_PROMPT,
     build_messages,
 )
 from app.models.agent import AgentState
-from app.models.chat import Explanation, IntentDecision
+from app.models.chat import Explanation, IntentDecision, SemanticDecision
 from app.services.database import DatabaseService
 from app.services.llm import LanguageModel, ModelUnavailableError
 from app.services.request_policy import requests_destructive_operation
@@ -31,6 +32,7 @@ class AgentDependencies:
     database: DatabaseService
     validator: SQLValidator
     model: LanguageModel
+    semantic_model: LanguageModel | None = None
 
 
 SUPPORTED_USER_STATES = ("california", "new york", "texas", "washington")
@@ -368,6 +370,8 @@ async def sql_generator_node(state: AgentState, dependencies: AgentDependencies)
         "is_valid": False,
         "error_msg": None,
         "query_results": None,
+        "semantic_valid": False,
+        "semantic_error": None,
     }
 
 
@@ -396,6 +400,59 @@ def validation_node(state: AgentState, dependencies: AgentDependencies) -> Dict[
         if state["original_error"] is None:
             update["original_error"] = error_message
         return update
+
+
+async def semantic_validation_node(
+    state: AgentState, dependencies: AgentDependencies
+) -> Dict[str, Any]:
+    """Check whether validated SQL answers the user's request before execution.
+
+    Args:
+        state: A SQLGlot/schema-validated candidate and bounded conversation context.
+        dependencies: Injected semantic-review model. It is optional for deterministic
+            test graphs and deployments that intentionally disable semantic review.
+
+    Returns:
+        Semantic approval, or a bounded repair failure that is routed back to generation.
+
+    Side Effects:
+        Makes one JSON-only LLM call when a semantic reviewer is configured. It never
+        executes SQL and cannot bypass the independent SQL validator.
+    """
+    if dependencies.semantic_model is None:
+        return {"semantic_valid": True, "semantic_error": None}
+    raw = await dependencies.semantic_model.complete(
+        build_messages(SEMANTIC_VALIDATOR_PROMPT, state, dependencies.database.schema),
+        json_output=True,
+    )
+    try:
+        decision = SemanticDecision.model_validate(_model_json_object(raw))
+    except (ValidationError, ValueError, json.JSONDecodeError) as error:
+        raise ModelUnavailableError(
+            "The semantic reviewer returned an invalid response. Please try again."
+        ) from error
+    if decision.matches_request:
+        return {"semantic_valid": True, "semantic_error": None, "error_msg": None}
+    reason = decision.reason.strip() or (
+        "The validated SQL does not fully match the user's request."
+    )
+    correction_text = " ".join(
+        item.strip() for item in decision.suggested_corrections if item.strip()
+    )
+    semantic_error = f"Semantic mismatch: {reason}"
+    if correction_text:
+        semantic_error += f" Suggested correction: {correction_text}"
+    update: Dict[str, Any] = {
+        "semantic_valid": False,
+        "semantic_error": semantic_error,
+        "is_valid": False,
+        "error_msg": semantic_error,
+        "retry_count": state["retry_count"] + 1,
+        "query_results": None,
+    }
+    if state["original_error"] is None:
+        update["original_error"] = semantic_error
+    return update
 
 
 async def executor_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:

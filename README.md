@@ -97,6 +97,7 @@ flowchart LR
     API --> G[LangGraph workflow]
     G --> M[Injected language model]
     G --> V[SQLGlot AST + schema validator]
+    G --> Q[LLM semantic reviewer]
     V --> DB[Read-only SQLite service]
     DB --> DATA[(ecommerce.db)]
     API --> CS[Server-side chat store]
@@ -133,8 +134,10 @@ flowchart TD
     H -->|Query| G[Generate using history and previous_sql]
     D --> G
     G --> V[Validate AST, identifiers, and joins]
-    V -->|Valid| O[SQL optimization phase]
+    V -->|Valid| Q[Semantic review against request]
     V -->|Invalid| F[Increment retry_count]
+    Q -->|Mismatch| F
+    Q -->|Match| O[SQL optimization phase]
     F -->|Count below 3| G
     F -->|Count reaches 3| X[Graceful fallback]
     O --> E[Execute through restricted SQLite]
@@ -180,8 +183,11 @@ Top-level `UNION`, `INTERSECT`, `EXCEPT`, and `EXPLAIN` are also rejected by the
 SELECT-root rule. These are intentional supported-language limits, not claims that
 those operations are inherently destructive.
 
-Guardrails prevent writes; they do not prove that every LLM interpretation matches
-business intent. Live model accuracy must be checked with the evaluation cases below.
+The semantic reviewer is a separate JSON-only LLM call that compares the latest request,
+conversation context, schema, and validated SQL. A mismatch is treated as a failed attempt
+and sent back to generation. This reviewer improves intent alignment but is not a formal
+proof of arbitrary natural-language equivalence; ambiguous requests are still routed to
+clarification and live model accuracy should be checked with the evaluation cases below.
 
 ## Database
 
@@ -272,7 +278,7 @@ npm run build
 npm test
 ```
 
-Current checks: **102 backend tests and 11 frontend tests**. Backend tests use the real
+Current checks: **103 backend tests and 11 frontend tests**. Backend tests use the real
 seeded SQLite database and a scripted model, including repair after AST/schema and
 SQLite errors. Frontend tests exercise the actual HTTP client with controlled
 responses. These tests do not establish live LLM accuracy.

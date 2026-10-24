@@ -19,13 +19,18 @@ from app.services.sql_validation import SQLValidator
 
 
 def create_app(
-    settings: Optional[Settings] = None, model: Optional[LanguageModel] = None
+    settings: Optional[Settings] = None,
+    model: Optional[LanguageModel] = None,
+    semantic_model: Optional[LanguageModel] = None,
 ) -> FastAPI:
     """Build the FastAPI application with optional injected configuration/model.
 
     Args:
         settings: Explicit settings, or load environment settings at startup.
         model: Optional alternate model implementation for tests or integrations.
+        semantic_model: Optional independent semantic-review model. When omitted,
+            the configured production model is reused; injected test models keep the
+            reviewer disabled unless explicitly supplied.
 
     Returns:
         Application with lifecycle-owned services and HTTP routes.
@@ -58,6 +63,7 @@ def create_app(
                 configuration.llm_model,
                 configuration.llm_max_tokens,
             )
+            semantic_reviewer = semantic_model or (language_model if model is None else None)
             application.state.database = database
             application.state.chat_store = chat_store
             application.state.sql_validator = sql_validator
@@ -65,7 +71,12 @@ def create_app(
                 model or (configuration.llm_api_key.get_secret_value() and configuration.llm_model)
             )
             application.state.graph = build_graph(
-                AgentDependencies(database, sql_validator, language_model)
+                AgentDependencies(
+                    database,
+                    sql_validator,
+                    language_model,
+                    semantic_model=semantic_reviewer,
+                )
             )
             yield
         chat_store.close()

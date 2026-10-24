@@ -134,6 +134,8 @@ def initial_state(payload: ChatRequest) -> AgentState:
         optimization_context="",
         dialect=payload.dialect,
         context_corrected=False,
+        semantic_valid=False,
+        semantic_error=None,
     )
 
 

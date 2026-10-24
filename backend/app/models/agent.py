@@ -30,3 +30,5 @@ class AgentState(TypedDict):
     optimization_context: str
     dialect: SQLDialect
     context_corrected: bool
+    semantic_valid: bool
+    semantic_error: Optional[str]
