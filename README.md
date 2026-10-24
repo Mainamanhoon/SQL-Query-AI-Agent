@@ -117,7 +117,7 @@ frontend/
   src/components/ ChatWindow, SQLPanel, ExplanationBox, ResultsTable
   src/hooks/      Conversation state and request cancellation
   src/services/   Typed API client and safe CSV export
-docs/             Schema, workflow/design notes, evaluation checklist
+docs/             Schema and workflow/design notes
 ```
 
 ### LangGraph validation loop
@@ -283,7 +283,7 @@ It uses installed Microsoft Edge by default; set `BROWSER_CHANNEL=chrome` if nee
 Chat responses in that browser test are explicitly HTTP fixtures. Screenshots go to
 the ignored `artifacts/browser/` directory. CI runs backend tests and frontend build/tests.
 
-See [evaluation cases](docs/evaluation.md) for live model acceptance checks.
+Live acceptance checks should be performed against the deployed application before submission.
 
 ## Assumptions
 
