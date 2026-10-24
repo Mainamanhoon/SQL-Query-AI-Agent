@@ -5,13 +5,13 @@ refine it in a follow-up, or paste a query for debugging or optimization. Genera
 SQL is checked with SQLGlot and executed through an independently restricted SQLite
 connection before it is returned to the browser.
 
-Source, tests, Docker images, and local setup are included. Live model testing needs
+Source, tests, and Docker images are included. Live model testing needs
 `LLM_API_KEY` and `LLM_MODEL`; no model responses are simulated in the application.
 
 ## Setup and run
 
-The project can be run as two local development processes or as a Docker Compose
-stack. The backend owns the model key; the frontend never receives it.
+The project runs as a Docker Compose stack or a single Docker image. The backend owns
+the model key; the frontend never receives it.
 
 ### 1. Configure the model
 
@@ -32,54 +32,7 @@ LLM_MAX_TOKENS=1000
 
 Keep `.env` local. It is ignored by Git and must not be committed.
 
-### 2. Run the backend locally
-
-Requirements: Python 3.10 or newer. Run these commands from the repository root.
-
-PowerShell:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r backend/requirements-dev.txt
-.\.venv\Scripts\python -m pip install --no-deps -e backend
-Copy-Item .env.example .env       # skip if .env already exists
-.\.venv\Scripts\python backend/seed_db.py
-.\.venv\Scripts\python -m uvicorn app.main:create_app --factory --reload
-```
-
-macOS/Linux:
-
-```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements-dev.txt
-.venv/bin/python -m pip install --no-deps -e backend
-cp .env.example .env              # skip if .env already exists
-.venv/bin/python backend/seed_db.py
-.venv/bin/python -m uvicorn app.main:create_app --factory --reload
-```
-
-The API is available at `http://localhost:8000`. Useful endpoints are:
-
-- `GET /health` - readiness and model configuration status
-- `GET /schema` - trusted database schema
-- `POST /chat` - conversational SQL requests
-- `GET /docs` - interactive OpenAPI documentation
-
-### 3. Run the frontend locally
-
-Requirements: Node.js 22.12 or newer. Open a second terminal:
-
-```sh
-cd frontend
-npm ci
-npm run dev
-```
-
-Open `http://localhost:5173`. Vite proxies `/api` requests to the backend on port
-8000. For a separately hosted frontend, set `VITE_API_URL` at build time and add its
-origin to `CORS_ORIGINS`. On PowerShell, use `npm.cmd` if script execution blocks npm.
-
-### 4. Run with Docker Compose
+### 2. Run with Docker Compose
 
 Requires Docker Desktop or Docker Engine with Compose. From the repository root:
 
@@ -110,7 +63,7 @@ docker compose logs -f
 docker compose down
 ```
 
-### 5. Build the combined production image
+### 3. Build the combined production image
 
 The root `Dockerfile` builds the frontend and serves it from FastAPI. This is useful
 for a single-service deployment:
