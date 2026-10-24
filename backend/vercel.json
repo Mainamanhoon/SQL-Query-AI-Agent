@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "python seed_db.py",
+  "functions": {
+    "app/server.py": {
+      "maxDuration": 60,
+      "includeFiles": ["ecommerce.db"]
+    }
+  }
+}
