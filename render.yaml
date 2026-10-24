@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: querydesk
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://api.openai.com/v1
+      - key: QUERY_TIMEOUT_SECONDS
+        value: "2"
+      - key: QUERY_ROW_LIMIT
+        value: "200"

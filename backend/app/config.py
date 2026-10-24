@@ -1,7 +1,7 @@
 """Environment-backed application configuration."""
 
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,3 +20,4 @@ class Settings(BaseSettings):
     query_timeout_seconds: float = Field(default=2, gt=0, le=30)
     query_row_limit: int = Field(default=200, ge=1, le=1000)
     cors_origins: List[str] = ["http://localhost:5173"]
+    frontend_dist: Optional[Path] = None

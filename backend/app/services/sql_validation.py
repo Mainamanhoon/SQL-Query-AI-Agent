@@ -166,9 +166,15 @@ class SQLValidator:
                 joined_alias = join.this.alias_or_name
                 predicate = join.args.get("on")
                 connected = False
-                # OR predicates can turn a valid FK equality into an unrestricted join.
-                if predicate is not None and not any(predicate.find_all(exp.Or)):
-                    for equality in predicate.find_all(exp.EQ):
+                # Only positive equality conjuncts establish a relationship.
+                if predicate is not None:
+                    conjuncts = (
+                        predicate.flatten() if isinstance(predicate, exp.And) else [predicate]
+                    )
+                    for equality in conjuncts:
+                        equality = equality.unnest()
+                        if not isinstance(equality, exp.EQ):
+                            continue
                         left, right = equality.left, equality.right
                         if not isinstance(left, exp.Column) or not isinstance(right, exp.Column):
                             continue

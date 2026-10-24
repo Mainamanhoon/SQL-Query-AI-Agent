@@ -6,6 +6,7 @@ from typing import AsyncIterator, Optional
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.agent.graph import build_graph
 from app.agent.nodes import AgentDependencies
@@ -69,4 +70,7 @@ def create_app(
         allow_headers=["Content-Type"],
     )
     application.include_router(router)
+    application.include_router(router, prefix="/api", include_in_schema=False)
+    if configuration.frontend_dist is not None:
+        application.mount("/", StaticFiles(directory=configuration.frontend_dist, html=True))
     return application

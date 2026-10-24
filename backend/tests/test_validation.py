@@ -36,6 +36,8 @@ from app.services.sql_validation import SQLValidationError, SQLValidator
         "SELECT id FROM Users u JOIN Orders o ON u.id=o.user_id",
         "SELECT u.name FROM Users u JOIN Orders o ON u.id=o.id",
         "SELECT u.name FROM Users u JOIN Orders o ON u.id=o.user_id OR 1=1",
+        "SELECT u.name FROM Users u JOIN Orders o ON NOT (u.id=o.user_id)",
+        "SELECT u.name FROM Users u JOIN Orders o ON CASE WHEN u.id=o.user_id THEN 0 ELSE 1 END",
         "SELECT * FROM Users CROSS JOIN Products",
         "SELECT * FROM Users -- benign\n; /* hidden */ DROP TABLE Orders",
         "SELECT * FROM Users WHERE (",
