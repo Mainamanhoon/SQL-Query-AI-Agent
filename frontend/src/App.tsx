@@ -31,6 +31,7 @@ export default function App() {
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [schemaOpen, setSchemaOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false;
     const stored = localStorage.getItem('querydesk.theme');
@@ -83,14 +84,6 @@ export default function App() {
           </span>
           QueryDesk<span className="brand-period">.</span>
         </a>
-        <div className="sidebar-workspace">
-          <span className="workspace-avatar">E</span>
-          <div>
-            <strong>Ecommerce</strong>
-            <small>Sample workspace</small>
-          </div>
-          <ChevronDown size={14} />
-        </div>
         <button
           className="new-chat"
           onClick={() => {
@@ -111,11 +104,17 @@ export default function App() {
           }}
           onDelete={chat.deleteSession}
         />
-        <div className="schema-heading">
+        <button
+          type="button"
+          className="schema-heading schema-toggle"
+          aria-expanded={schemaOpen}
+          onClick={() => setSchemaOpen((open) => !open)}
+        >
           <span className="sidebar-label">DATABASE SCHEMA</span>
           <span>{schema ? Object.keys(schema.tables).length : '—'} tables</span>
-        </div>
-        <nav className="schema-list" aria-label="Database schema">
+          <ChevronDown size={13} className={schemaOpen ? 'schema-toggle-open' : ''} />
+        </button>
+        {schemaOpen && <nav className="schema-list" aria-label="Database schema">
           {schema ? (
             Object.values(schema.tables).map((table) => (
               <details key={table.name} className="schema-table">
@@ -158,7 +157,7 @@ export default function App() {
               {connection === 'offline' ? 'Start the API to load your schema.' : 'Loading schema…'}
             </p>
           )}
-        </nav>
+        </nav>}
         <div className="sidebar-bottom">
           <button className="help-button" onClick={() => setHelpOpen(!helpOpen)}>
             <CircleHelp size={16} /> How it works
