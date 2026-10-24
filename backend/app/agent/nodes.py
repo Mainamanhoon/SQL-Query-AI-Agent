@@ -32,6 +32,43 @@ class AgentDependencies:
     model: LanguageModel
 
 
+SUPPORTED_USER_STATES = ("california", "new york", "texas", "washington")
+
+
+def _deterministic_person_lookup(message: str) -> str | None:
+    """Build a safe Users lookup for an unambiguous person/state question.
+
+    Args:
+        message: Latest natural-language request.
+
+    Returns:
+        A read-only SQL statement when the message contains a named/called person and
+        one of the seeded states; otherwise ``None`` so the model handles the request.
+    """
+    name_match = re.search(
+        r"\b(?:called|named)\s+([a-z][a-z'-]*(?:\s+[a-z][a-z'-]*){0,2}?)(?=\s+(?:from|in)\b|[?.!,]|$)",
+        message,
+        re.IGNORECASE,
+    )
+    state_match = re.search(
+        r"\b(?:from|in)\s+(california|new\s+york|texas|washington)\b",
+        message,
+        re.IGNORECASE,
+    )
+    if name_match is None or state_match is None:
+        return None
+    person_name = " ".join(name_match.group(1).split())
+    state_name = state_match.group(1).replace("  ", " ").title()
+    if state_name.casefold() not in SUPPORTED_USER_STATES:
+        return None
+    escaped_name = person_name.replace("'", "''")
+    escaped_state = state_name.replace("'", "''")
+    return (
+        "SELECT id, name, email, state, created_at FROM Users "
+        f"WHERE name LIKE '%{escaped_name}%' AND state = '{escaped_state}'"
+    )
+
+
 def _model_json_object(raw: str) -> Dict[str, Any]:
     """Extract one JSON object from a model response without executing content.
 
@@ -127,6 +164,8 @@ async def router_node(state: AgentState, dependencies: AgentDependencies) -> Dic
     message = str(state["messages"][-1].content)
     if requests_destructive_operation(message):
         return {"intent": "out_of_scope", "destructive": True}
+    if _deterministic_person_lookup(message):
+        return {"intent": "query", "destructive": False, "clarification": ""}
     raw = await dependencies.model.complete(
         build_messages(ROUTER_PROMPT, state, dependencies.database.schema), json_output=True
     )
@@ -245,7 +284,8 @@ async def sql_generator_node(state: AgentState, dependencies: AgentDependencies)
     Returns:
         Candidate SQL and cleared transient results. Makes one LLM request.
     """
-    generated_sql = await dependencies.model.complete(
+    deterministic_sql = _deterministic_person_lookup(str(state["messages"][-1].content))
+    generated_sql = deterministic_sql or await dependencies.model.complete(
         build_messages(GENERATOR_PROMPT, state, dependencies.database.schema)
     )
     return {

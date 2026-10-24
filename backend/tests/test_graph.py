@@ -110,6 +110,30 @@ async def test_followup_keeps_previous_sql_and_messages(database: DatabaseServic
     assert len(result["messages"]) == 3
 
 
+async def test_person_state_lookup_ignores_an_old_order_query(
+    database: DatabaseService,
+) -> None:
+    """Person lookups do not inherit an unrelated Orders join from session context."""
+    model = ScriptedModel([explanation()])
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(
+        initial_state(
+            ChatRequest(
+                message="Check if there is anyone called Aman from California in any tables",
+                previous_sql=(
+                    "SELECT orders.id, users.name FROM Orders JOIN Users "
+                    "ON Orders.user_id = Users.id WHERE Users.state = 'California'"
+                ),
+            )
+        )
+    )
+    assert result["status"] == "success"
+    assert 'from "users"' in result["generated_sql"].lower()
+    assert '"orders"' not in result["generated_sql"].lower()
+    assert result["query_results"].rows == []
+    assert len(model.calls) == 1
+
+
 @pytest.mark.parametrize(
     "intent,status", [("out_of_scope", "rejected"), ("clarify", "clarification")]
 )
