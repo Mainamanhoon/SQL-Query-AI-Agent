@@ -107,16 +107,18 @@ export function sendMessage(
   signal: AbortSignal,
   sessionId?: string,
 ) {
+  const body = sessionId
+    ? { message, session_id: sessionId }
+    : {
+        message,
+        history: history.slice(-30).map(({ role, content, sql }) => ({ role, content, sql })),
+        previous_sql: previousSql,
+      };
   return streamRequest('/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
-    body: JSON.stringify({
-      message,
-      history: history.slice(-30).map(({ role, content, sql }) => ({ role, content, sql })),
-      previous_sql: previousSql,
-      session_id: sessionId,
-    }),
+    body: JSON.stringify(body),
   }, () => undefined);
 }
 
@@ -128,18 +130,20 @@ export function sendMessageStream(
   sessionId: string | undefined,
   onChunk: (text: string) => void,
 ): Promise<ChatResponse> {
+  const body = sessionId
+    ? { message, session_id: sessionId }
+    : {
+        message,
+        history: history.slice(-30).map(({ role, content, sql }) => ({ role, content, sql })),
+        previous_sql: previousSql,
+      };
   return streamRequest(
     '/chat/stream',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal,
-      body: JSON.stringify({
-        message,
-        history: history.slice(-30).map(({ role, content, sql }) => ({ role, content, sql })),
-        previous_sql: previousSql,
-        session_id: sessionId,
-      }),
+      body: JSON.stringify(body),
     },
     onChunk,
   );

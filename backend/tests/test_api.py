@@ -5,8 +5,10 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from test_graph import ScriptedModel, decision, explanation
 
+from app.api.routes import initial_state
 from app.config import Settings
 from app.main import create_app
+from app.models.chat import ChatMessage, ChatRequest
 
 
 def test_chat_returns_safe_sql_and_results(database_path: Path) -> None:
@@ -83,6 +85,17 @@ def test_client_cannot_inject_system_role_or_unbounded_history(database_path: Pa
             == 422
         )
         assert client.post("/chat", json={"message": "   "}).status_code == 422
+
+
+def test_model_context_window_is_smaller_than_persisted_history() -> None:
+    """Long retained transcripts are reduced before entering LangGraph model state."""
+    request = ChatRequest(
+        message="Follow up",
+        history=[ChatMessage(role="user", content="x" * 4000) for _ in range(30)],
+    )
+    state = initial_state(request)
+    assert len(state["messages"]) == 7
+    assert all(len(message.content) <= 4000 for message in state["messages"])
 
 
 def test_server_sessions_restore_context_between_requests(

@@ -226,7 +226,10 @@ made by any session endpoint.
 Conversation sessions are persisted server-side through `/sessions`, keyed by an
 opaque `X-Client-ID` retained in the browser. The backend keeps at most 20 sessions
 and 60 messages per client, and `/chat` loads the stored session before generating a
-follow-up. The browser's `querydesk.sessions.v1` local-storage value is only a cache
+follow-up. Only the newest 12 messages and 24,000 context characters enter each model
+turn; the full bounded transcript remains available for the conversation UI. Session
+requests do not resend history or previous SQL from the browser. The browser's
+`querydesk.sessions.v1` local-storage value is only a cache
 for startup/offline continuity; it is not the source of truth. This anonymous client
 identifier is not authentication—add account authentication before treating sessions
 as private user data. Selecting an older session restores its messages and previous
@@ -262,7 +265,7 @@ npm run build
 npm test
 ```
 
-Current checks: **99 backend tests and 11 frontend tests**. Backend tests use the real
+Current checks: **100 backend tests and 11 frontend tests**. Backend tests use the real
 seeded SQLite database and a scripted model, including repair after AST/schema and
 SQLite errors. Frontend tests exercise the actual HTTP client with controlled
 responses. These tests do not establish live LLM accuracy.

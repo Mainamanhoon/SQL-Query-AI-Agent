@@ -34,6 +34,35 @@ from app.services.sql_validation import SQLValidationError, SQLValidator
 
 router = APIRouter()
 CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+MODEL_HISTORY_MESSAGE_LIMIT = 12
+MODEL_HISTORY_CHAR_LIMIT = 24_000
+MODEL_MESSAGE_CHAR_LIMIT = 4_000
+MODEL_SQL_CHAR_LIMIT = 6_000
+
+
+def _bounded_context_history(history: List[ChatMessage]) -> List[ChatMessage]:
+    """Keep recent, bounded context while retaining the server's full session record.
+
+    Args:
+        history: Validated user/assistant messages from a request or persisted session.
+
+    Returns:
+        The newest messages that fit the message and character budgets used for one model turn.
+    """
+    selected: List[ChatMessage] = []
+    total_characters = 0
+    for message in reversed(history):
+        bounded_content = message.content[:MODEL_MESSAGE_CHAR_LIMIT]
+        bounded_sql = message.sql[:MODEL_SQL_CHAR_LIMIT] if message.sql else None
+        message_characters = len(bounded_content) + len(bounded_sql or "")
+        if selected and (
+            len(selected) >= MODEL_HISTORY_MESSAGE_LIMIT
+            or total_characters + message_characters > MODEL_HISTORY_CHAR_LIMIT
+        ):
+            break
+        selected.append(message.model_copy(update={"content": bounded_content, "sql": bounded_sql}))
+        total_characters += message_characters
+    return list(reversed(selected))
 
 
 def get_optional_client_id(
@@ -71,11 +100,12 @@ def initial_state(payload: ChatRequest) -> AgentState:
     Returns:
         New state with a zeroed retry counter; input data remains untrusted.
     """
+    bounded_history = _bounded_context_history(payload.history)
     messages = [
         (HumanMessage if message.role == "user" else AIMessage)(
             content=message.content + (f"\nPrevious query:\n{message.sql}" if message.sql else "")
         )
-        for message in payload.history
+        for message in bounded_history
     ]
     previous_sql = payload.previous_sql or next(
         (
@@ -110,7 +140,7 @@ def _history_from_session(session: ChatSession) -> List[ChatMessage]:
     """Convert persisted messages to the graph's intentionally smaller input model."""
     return [
         ChatMessage(role=message.role, content=message.content, sql=message.sql)
-        for message in session.messages
+        for message in session.messages[-MODEL_HISTORY_MESSAGE_LIMIT:]
     ]
 
 

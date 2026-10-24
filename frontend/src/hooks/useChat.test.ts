@@ -39,7 +39,7 @@ describe('conversation state', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it('sends history and the previous successful SQL with follow-ups', async () => {
+  it('uses the server session instead of resending duplicate follow-up context', async () => {
     fetchMock.mockImplementation(async () => response(success));
     const { result } = renderHook(() => useChat());
     await act(async () => {
@@ -53,10 +53,9 @@ describe('conversation state', () => {
     );
     const payload = JSON.parse(String(chatCalls[1][1]?.body));
     expect(payload.message).toBe('Only California');
-    expect(payload.previous_sql).toBe(success.generated_sql);
-    expect(payload.history).toContainEqual(
-      expect.objectContaining({ role: 'assistant', sql: success.generated_sql }),
-    );
+    expect(payload.session_id).toBeTruthy();
+    expect(payload.history).toBeUndefined();
+    expect(payload.previous_sql).toBeUndefined();
     expect(result.current.messages).toHaveLength(4);
   });
 
@@ -84,9 +83,7 @@ describe('conversation state', () => {
     const chatCalls = fetchMock.mock.calls.filter(([url]) =>
       String(url).endsWith('/chat/stream'),
     );
-    expect(JSON.parse(String(chatCalls[2][1]?.body)).previous_sql).toBe(
-      success.generated_sql,
-    );
+    expect(JSON.parse(String(chatCalls[2][1]?.body)).previous_sql).toBeUndefined();
   });
 
   it('shows API errors and removes the failed submission from history', async () => {
