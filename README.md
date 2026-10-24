@@ -35,7 +35,7 @@ nano .env
 ```dotenv
 LLM_API_KEY=your-provider-key
 LLM_BASE_URL=https://openrouter.ai/api/v1
-LLM_MODEL=moonshotai/kimi-k3.1-pro
+LLM_MODEL=deepseek/deepseek-v4.1-flash
 LLM_MAX_TOKENS=1000
 ```
 
@@ -62,8 +62,8 @@ docker compose down
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `LLM_API_KEY` | empty | Backend-only model credential; never sent to the frontend |
-| `LLM_MODEL` | empty | Model ID from your chosen provider |
-| `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible chat-completions base URL |
+| `LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | OpenRouter model ID |
+| `LLM_BASE_URL` | `https://openrouter.ai/api/v1` | OpenAI-compatible chat-completions base URL |
 | `LLM_TIMEOUT_SECONDS` | `30` | Deadline for each provider request |
 | `LLM_MAX_TOKENS` | `1000` | Maximum completion budget per model call |
 | `DATABASE_PATH` | `./ecommerce.db` | Existing SQLite file; containers set their own absolute path |
