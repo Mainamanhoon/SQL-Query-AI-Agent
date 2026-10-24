@@ -302,3 +302,14 @@ async def test_fenced_json_model_responses_are_accepted(database: DatabaseServic
     graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
     result = await graph.ainvoke(initial_state(ChatRequest(message="Show users")))
     assert result["status"] == "success"
+
+
+async def test_invalid_explanation_uses_deterministic_fallback(database: DatabaseService) -> None:
+    """Malformed explanation output cannot turn a valid query into a failed request."""
+    model = ScriptedModel([decision(), "SELECT name FROM Users", "not valid json"])
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(initial_state(ChatRequest(message="Show users")))
+    assert result["status"] == "success"
+    assert result["is_valid"] is True
+    assert "6 row(s)" in result["explanation"]
+    assert len(result["query_results"].rows) == 6

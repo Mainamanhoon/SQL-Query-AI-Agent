@@ -390,6 +390,46 @@ def _default_optimization_tips(sql: str) -> list[str]:
     return tips[:6]
 
 
+def _deterministic_explanation(state: AgentState) -> Dict[str, Any]:
+    """Build a safe explanation when the provider returns malformed prose/JSON.
+
+    Args:
+        state: Validated SQL state with bounded execution results.
+
+    Returns:
+        A deterministic success projection that does not depend on model formatting.
+    """
+    results = state["query_results"]
+    row_count = len(results.rows) if results is not None else 0
+    result_text = (
+        "It returned no matching rows."
+        if row_count == 0
+        else (
+            f"It returned {row_count} row(s)"
+            f"{' before the display limit.' if results and results.truncated else '.'}"
+        )
+    )
+    explanation = f"The validated read-only query executed successfully. {result_text}"
+    original_error = None
+    if state["intent"] == "debug":
+        original_error = state["original_error"]
+        if original_error and safe_explanation(original_error):
+            explanation += " The submitted SQL required correction before validation."
+        else:
+            original_error = "The submitted SQL required correction before validation."
+            explanation += " The submitted SQL required correction before validation."
+    optimization_tips = (
+        _default_optimization_tips(state["generated_sql"])
+        if state["intent"] == "optimize"
+        else []
+    )
+    return {
+        "explanation": explanation,
+        "original_error": original_error,
+        "optimization_tips": optimization_tips,
+    }
+
+
 async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
     """Explain the successful query and any debugging or optimization changes.
 
@@ -424,10 +464,8 @@ async def explainer_node(state: AgentState, dependencies: AgentDependencies) -> 
             )
         if state["intent"] == "optimize" and not explanation.optimization_tips:
             raise ValueError("Optimization advice is missing.")
-    except (ValidationError, ValueError) as error:
-        raise ModelUnavailableError(
-            "The model returned an invalid explanation. Please try again."
-        ) from error
+    except (ValidationError, ValueError):
+        return {**_deterministic_explanation(state), "status": "success"}
     return {**explanation.model_dump(), "status": "success"}
 
 

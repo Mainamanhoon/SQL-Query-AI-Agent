@@ -29,6 +29,11 @@ worker threads never reuse another request's connection.
 | API | Validate transport input and project safe output |
 | React hook | Keep history, previous SQL, request state, and cancellation |
 
+If a provider returns malformed or unsafe explanation JSON after SQL has already
+validated and executed, the explainer uses a deterministic result-count fallback.
+Provider transport failures still surface as provider errors; valid database work is
+never discarded solely because model prose formatting failed.
+
 The frontend uses `/chat/stream` for conversational turns. The stream sends a
 processing event and explanation chunks, then emits SQL/results only in the final
 event after the graph has completed validation and read-only execution. SQL and CSV
