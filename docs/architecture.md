@@ -33,7 +33,9 @@ The frontend uses `/chat/stream` for conversational turns. The stream sends a
 processing event and explanation chunks, then emits SQL/results only in the final
 event after the graph has completed validation and read-only execution. SQL and CSV
 downloads are client-side Blob downloads; no write-capable database endpoint is
-introduced.
+introduced. Every successful result also carries a SQLite `EXPLAIN QUERY PLAN`
+summary, so cost guidance is deterministic and does not require an LLM claim about
+performance.
 
 `AgentState` is defined once in `models/agent.py` and exposed through `agent/state.py`.
 `messages` uses LangGraph's `add_messages` reducer. All other fields use ordinary
@@ -60,6 +62,11 @@ never accepts generated SQL. Runtime query connections are independently read-on
 and have an authorizer installed before executing any candidate. A SQLite
 primary-key-only read can produce a READ callback with an empty column and no
 database name; the callback permits that form only for known application tables.
+
+The public SQL boundary accepts SQLite, PostgreSQL, and MySQL read-only syntax. The
+validator checks the requested source dialect first, then SQLGlot-transpiles a valid
+candidate to SQLite before the restricted executor sees it. This provides a portable
+SQL surface while keeping one hardened execution engine and one trusted schema.
 
 ## Retry semantics
 

@@ -1,4 +1,12 @@
 export type Intent = 'query' | 'optimize' | 'debug' | 'out_of_scope' | 'clarify';
+export type SQLDialect = 'sqlite' | 'postgresql' | 'mysql';
+
+export interface QueryCostEstimate {
+  planner_steps: number;
+  full_scan_tables: string[];
+  index_uses: string[];
+  summary: string;
+}
 
 export interface QueryResults {
   columns: string[];
@@ -6,11 +14,13 @@ export interface QueryResults {
   truncated: boolean;
   elapsed_ms: number;
   row_limit: number | null;
+  cost_estimate?: QueryCostEstimate | null;
 }
 
 export interface SQLRunResponse {
   sql: string;
   query_results: QueryResults;
+  dialect?: SQLDialect;
 }
 
 export interface ChatResponse {
@@ -25,6 +35,7 @@ export interface ChatResponse {
   original_error: string | null;
   optimization_tips: string[];
   query_results: QueryResults | null;
+  dialect?: SQLDialect;
 }
 
 export interface ChatMessage {

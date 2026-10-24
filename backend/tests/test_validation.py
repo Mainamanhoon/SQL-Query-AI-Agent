@@ -84,6 +84,22 @@ def test_valid_queries_resolve_scopes_and_execute(
     assert len(database.execute(validated).rows) == row_count
 
 
+@pytest.mark.parametrize(
+    "dialect, sql",
+    [
+        ("mysql", "SELECT name FROM Users LIMIT 2"),
+        ("postgresql", "SELECT name FROM Users WHERE state ILIKE 'california'"),
+    ],
+)
+def test_supported_dialects_transpile_to_safe_sqlite(
+    database: DatabaseService, dialect: str, sql: str
+) -> None:
+    """PostgreSQL and MySQL read-only syntax is checked then safely translated for SQLite."""
+    validated = SQLValidator(database.schema).validate(sql, dialect=dialect)
+    assert len(database.execute(validated).rows) > 0
+    assert '"users"' in validated.lower()
+
+
 def test_validation_node_records_error_and_increments_once(database: DatabaseService) -> None:
     """The node exposes failed SQL context for repair without executing the candidate."""
     state = initial_state(ChatRequest(message="Show users"))

@@ -44,6 +44,21 @@ def test_run_sql_validates_and_executes_editor_queries(database_path: Path) -> N
         assert client.post("/run-sql", json={"sql": "DROP TABLE Users"}).status_code == 400
 
 
+def test_run_sql_transpiles_supported_readonly_dialects(database_path: Path) -> None:
+    """The editor API accepts PostgreSQL syntax and executes only its safe SQLite translation."""
+    with TestClient(create_app(Settings(database_path=database_path))) as client:
+        response = client.post(
+            "/run-sql",
+            json={
+                "dialect": "postgresql",
+                "sql": "SELECT name FROM Users WHERE state ILIKE 'california'",
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["dialect"] == "postgresql"
+        assert len(response.json()["query_results"]["rows"]) == 3
+
+
 def test_client_cannot_inject_system_role_or_unbounded_history(database_path: Path) -> None:
     """Pydantic rejects unsupported message roles and oversized conversations."""
     with TestClient(create_app(Settings(database_path=database_path), ScriptedModel([]))) as client:

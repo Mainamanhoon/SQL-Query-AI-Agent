@@ -102,6 +102,7 @@ def initial_state(payload: ChatRequest) -> AgentState:
         optimization_tips=[],
         schema_context="",
         optimization_context="",
+        dialect=payload.dialect,
     )
 
 
@@ -226,6 +227,7 @@ async def _process_chat(
         original_error=state["original_error"],
         optimization_tips=state["optimization_tips"],
         query_results=state["query_results"] if successful else None,
+        dialect=state["dialect"],
     )
     if payload.session_id and client_id is not None:
         try:
@@ -356,13 +358,13 @@ def run_sql(
         Opens a read-only SQLite connection; never modifies database contents.
     """
     try:
-        validated_sql = sql_validator.validate(payload.sql)
+        validated_sql = sql_validator.validate(payload.sql, dialect=payload.dialect)
         query_results = database.execute(validated_sql)
     except SQLValidationError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except sqlite3.DatabaseError as error:
         raise HTTPException(status_code=400, detail=f"SQL execution failed: {error}") from error
-    return SQLRunResponse(sql=validated_sql, query_results=query_results)
+    return SQLRunResponse(sql=validated_sql, query_results=query_results, dialect=payload.dialect)
 
 
 @router.get("/schema", response_model=DatabaseSchema)

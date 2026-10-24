@@ -721,6 +721,17 @@ button svg {
   border-radius: 3px;
   margin-left: 2px;
 }
+.dialect-select {
+  appearance: none;
+  font: inherit;
+  font-family: monospace;
+  font-size: 10px;
+  color: #7a8b68;
+  background: #f3f6ee;
+  border: 1px solid #e8edde;
+  border-radius: 3px;
+  padding: 2px 5px;
+}
 .small-button {
   display: flex;
   align-items: center;
@@ -970,6 +981,27 @@ button svg {
   padding: 32px 15px;
   color: #8b9c79;
   font-size: 13px;
+}
+.query-cost {
+  margin: 0 15px 10px;
+  padding: 9px 11px;
+  border: 1px solid #e3e9dc;
+  border-radius: 6px;
+  color: #718161;
+  font-size: 11px;
+  background: #fafcf7;
+}
+.query-cost summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.query-cost p {
+  margin: 7px 0 4px;
+  line-height: 1.5;
+}
+.query-cost span {
+  display: block;
+  margin-top: 3px;
 }
 .results-footer {
   display: flex;
@@ -1287,6 +1319,11 @@ button svg {
   background: #1b281f;
   border-color: #3a4e3c;
 }
+.theme-dark .dialect-select {
+  color: #c0d4c0;
+  background: #223126;
+  border-color: #3a4e3c;
+}
 .theme-dark .new-chat:hover,
 .theme-dark .suggestion:hover,
 .theme-dark .session-delete:hover {
@@ -1355,6 +1392,11 @@ button svg {
   color: #8ea390;
   background: #152118;
   border-top: 1px solid #2b3b2f;
+}
+.theme-dark .query-cost {
+  color: #b5c9af;
+  background: #1b281f;
+  border-color: #3a4e3c;
 }
 .theme-dark .result-count {
   color: #b8ceb3;

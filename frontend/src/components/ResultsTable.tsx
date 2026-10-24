@@ -47,6 +47,18 @@ export function ResultsTable({ results }: { results: QueryResults | null }) {
           {results.rows.length === 0 && (
             <div className="no-matches">No matching records. Try broadening your filters.</div>
           )}
+          {results.cost_estimate && (
+            <details className="query-cost">
+              <summary>Query cost estimate</summary>
+              <p>{results.cost_estimate.summary}</p>
+              {results.cost_estimate.full_scan_tables.length > 0 && (
+                <span>Full scans: {results.cost_estimate.full_scan_tables.join(', ')}</span>
+              )}
+              {results.cost_estimate.index_uses.length > 0 && (
+                <span>Indexes: {results.cost_estimate.index_uses.join(', ')}</span>
+              )}
+            </details>
+          )}
           <div className="results-footer">
             <span>
               {results.truncated

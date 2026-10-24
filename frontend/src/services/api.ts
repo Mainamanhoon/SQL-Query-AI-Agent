@@ -3,6 +3,7 @@ import type {
   ChatResponse,
   ChatSession,
   DatabaseSchema,
+  SQLDialect,
   SQLRunResponse,
 } from '../types/chat';
 
@@ -152,12 +153,12 @@ export function getHealth() {
   return request<{ status: string; model_configured: boolean }>('/health');
 }
 
-export function runSQL(sql: string, signal?: AbortSignal) {
+export function runSQL(sql: string, dialect: SQLDialect = 'sqlite', signal?: AbortSignal) {
   return request<SQLRunResponse>('/run-sql', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
-    body: JSON.stringify({ sql }),
+    body: JSON.stringify(dialect === 'sqlite' ? { sql } : { sql, dialect }),
   });
 }
 

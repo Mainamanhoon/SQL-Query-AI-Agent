@@ -16,6 +16,9 @@ class SQLValidationError(ValueError):
     """A query violates the supported read-only SQL contract."""
 
 
+SUPPORTED_DIALECTS = {"sqlite": "sqlite", "postgresql": "postgres", "mysql": "mysql"}
+
+
 class SQLValidator:
     """Validate statement shape, identifiers, and declared join relationships."""
 
@@ -42,11 +45,13 @@ class SQLValidator:
                     )
                 )
 
-    def validate(self, sql: str) -> str:
-        """Validate one SELECT and return SQL generated from its validated AST.
+    def validate(self, sql: str, dialect: str = "sqlite") -> str:
+        """Validate one SELECT and return safe SQLite SQL for execution.
 
         Args:
             sql: Untrusted generated or user-supplied SQL text.
+            dialect: Input SQL dialect. PostgreSQL and MySQL are transpiled to SQLite
+                after their source AST passes the same read-only/schema checks.
 
         Returns:
             Canonical SQLite SQL; no database operations are performed.
@@ -56,8 +61,12 @@ class SQLValidator:
         """
         if not sql.strip() or len(sql) > 12000:
             raise SQLValidationError("Supply a nonempty SELECT of at most 12000 characters.")
+        read_dialect = SUPPORTED_DIALECTS.get(dialect.casefold())
+        if read_dialect is None:
+            supported = ", ".join(SUPPORTED_DIALECTS)
+            raise SQLValidationError(f"Unsupported SQL dialect. Choose one of: {supported}.")
         try:
-            statements = sqlglot.parse(sql, read="sqlite")
+            statements = sqlglot.parse(sql, read=read_dialect)
             if len(statements) != 1 or not isinstance(statements[0], exp.Select):
                 raise SQLValidationError("Exactly one statement with a SELECT root is required.")
             expression = statements[0]
@@ -65,14 +74,20 @@ class SQLValidator:
             self._check_sources(expression)
             qualified = qualify(
                 expression.copy(),
-                dialect="sqlite",
+                dialect=read_dialect,
                 schema={name: table.columns for name, table in self.schema.tables.items()},
                 validate_qualify_columns=True,
                 allow_partial_qualification=False,
             )
             self._check_columns(qualified)
             self._check_joins(qualified)
-            return qualified.sql(dialect="sqlite", pretty=True)
+            canonical = qualified.sql(dialect=read_dialect, pretty=True)
+            if read_dialect == "sqlite":
+                return canonical
+            translated = sqlglot.transpile(canonical, read=read_dialect, write="sqlite")
+            if len(translated) != 1:
+                raise SQLValidationError("Dialect translation must produce exactly one statement.")
+            return self.validate(translated[0], dialect="sqlite")
         except SqlglotError as error:
             raise SQLValidationError(str(error)) from error
 

@@ -58,6 +58,15 @@ def test_authorizer_allows_read_only_aggregates(database: DatabaseService) -> No
     assert result.rows == [["California", 3], ["New York", 1], ["Texas", 1], ["Washington", 1]]
 
 
+def test_query_cost_estimate_reports_scan_and_plan_steps(database: DatabaseService) -> None:
+    """Every safe result includes a deterministic SQLite planner summary."""
+    result = database.execute("SELECT name FROM Users WHERE state='California'")
+    assert result.cost_estimate is not None
+    assert result.cost_estimate.planner_steps >= 1
+    assert "Users" in result.cost_estimate.full_scan_tables
+    assert "Full scan" in result.cost_estimate.summary
+
+
 def test_result_limit_preserves_columns(database_path: Path) -> None:
     """Results remain bounded and advertise truncation rather than silently losing rows."""
     database = DatabaseService(database_path, timeout_seconds=1, row_limit=2)

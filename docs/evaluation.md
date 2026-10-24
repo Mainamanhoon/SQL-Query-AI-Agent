@@ -25,6 +25,7 @@ record the provider/model and outcomes. Do not report these as passed until run.
 - Schema: unknown tables/columns, ambiguous columns, aliases, CTEs, correlated subqueries.
 - Relationships: valid foreign-key joins; rejection of unrelated, OR, negated, and CASE joins.
 - SQLite: direct write/PRAGMA/ATTACH/unsafe-function attempts, safe aggregates, row cap, deadline, preserved data.
+- Bonus execution: query-plan cost summaries and PostgreSQL/MySQL read-only transpilation to SQLite.
 - Graph: successful repair after validator and execution failures, three-failure termination,
   history/previous SQL propagation, rejection, clarification, debug and optimization details.
 - HTTP: typed responses, missing-provider handling, role restrictions, bounded history.

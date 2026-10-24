@@ -224,7 +224,7 @@ def debug_inspection_node(state: AgentState, dependencies: AgentDependencies) ->
             "clarification": "Please include the SQL query you want me to debug.",
         }
     try:
-        validated_sql = dependencies.validator.validate(candidate_sql)
+        validated_sql = dependencies.validator.validate(candidate_sql, dialect=state["dialect"])
     except SQLValidationError as error:
         error_message = f"Original SQL error: {error}"
         return {
@@ -267,7 +267,9 @@ def validation_node(state: AgentState, dependencies: AgentDependencies) -> Dict[
         Canonical validated SQL or one failure increment and explicit error context.
     """
     try:
-        sql = dependencies.validator.validate(state["generated_sql"])
+        sql = dependencies.validator.validate(
+            state["generated_sql"], dialect=state["dialect"]
+        )
         return {"generated_sql": sql, "is_valid": True, "error_msg": None}
     except SQLValidationError as error:
         error_message = str(error)

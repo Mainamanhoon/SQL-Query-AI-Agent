@@ -6,7 +6,7 @@ import {
   sendMessageStream,
   syncSession,
 } from '../services/api';
-import type { ChatMessage, ChatResponse, ChatSession } from '../types/chat';
+import type { ChatMessage, ChatResponse, ChatSession, SQLDialect } from '../types/chat';
 
 const SESSION_STORAGE_KEY = 'querydesk.sessions.v1';
 const MAX_SESSIONS = 20;
@@ -245,7 +245,7 @@ export function useChat() {
     }
   }
 
-  async function runSql(sql: string): Promise<void> {
+  async function runSql(sql: string, dialect: SQLDialect = 'sqlite'): Promise<void> {
     const statement = sql.trim();
     if (!statement || activeRequest.current || editorRequest.current || !activeSession) return;
     const controller = new AbortController();
@@ -254,7 +254,7 @@ export function useChat() {
     setSqlRunning(true);
     setError(null);
     try {
-      const result = await runSQLRequest(statement, controller.signal);
+      const result = await runSQLRequest(statement, dialect, controller.signal);
       if (controller.signal.aborted) return;
       const response: ChatResponse = {
         status: 'success',
@@ -268,6 +268,7 @@ export function useChat() {
         original_error: null,
         optimization_tips: [],
         query_results: result.query_results,
+        dialect: result.dialect,
       };
       updateSession(sessionId, (session) => ({
         ...session,

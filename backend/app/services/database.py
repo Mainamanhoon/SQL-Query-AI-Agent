@@ -1,11 +1,12 @@
 """Read-only execution with SQLite authorizer and bounded resource usage."""
 
+import re
 import sqlite3
 from pathlib import Path
 from time import monotonic
 from typing import Callable, Optional
 
-from app.models.database import DatabaseSchema, QueryResults
+from app.models.database import DatabaseSchema, QueryCostEstimate, QueryResults
 from app.services.schema import read_schema
 from app.services.sql_policy import READ_ONLY_SQL_FUNCTIONS
 
@@ -108,12 +109,64 @@ class DatabaseService:
             connection.set_progress_handler(deadline_exceeded, 1000)
             cursor = connection.execute(validated_sql)
             rows = cursor.fetchmany(self.row_limit + 1)
+            cost_estimate = self._estimate_cost(connection, validated_sql)
             return QueryResults(
                 columns=[description[0] for description in cursor.description or []],
                 rows=[list(row) for row in rows[: self.row_limit]],
                 truncated=len(rows) > self.row_limit,
                 elapsed_ms=round((monotonic() - started_at) * 1000, 2),
                 row_limit=self.row_limit,
+                cost_estimate=cost_estimate,
             )
         finally:
             connection.close()
+
+    def _estimate_cost(
+        self, connection: sqlite3.Connection, validated_sql: str
+    ) -> QueryCostEstimate:
+        """Summarize SQLite's query plan without executing a second data query.
+
+        Args:
+            connection: The already-authorized read-only connection for this request.
+            validated_sql: Canonical single SELECT accepted by SQLValidator.
+
+        Returns:
+            Planner step count, scan/index observations, and a human-readable summary.
+
+        Side Effects:
+            Reads SQLite's in-memory query plan only; it does not change schema or data.
+        """
+        plan_sql = validated_sql.strip().rstrip(";")
+        plan_rows = connection.execute(f"EXPLAIN QUERY PLAN {plan_sql}").fetchall()
+        details = [str(row[3]) for row in plan_rows if len(row) > 3]
+        full_scan_tables: list[str] = []
+        index_uses: list[str] = []
+        for detail in details:
+            scan_match = re.search(r"\bSCAN\s+(?:TABLE\s+)?([^\s(]+)", detail, re.IGNORECASE)
+            if scan_match and "USING" not in detail.upper():
+                table_name = scan_match.group(1).strip('"`[]')
+                if table_name not in full_scan_tables:
+                    full_scan_tables.append(table_name)
+            index_match = re.search(
+                r"\bUSING\s+(?:COVERING\s+)?INDEX\s+([^\s(]+)", detail, re.IGNORECASE
+            )
+            if index_match:
+                index_name = index_match.group(1).strip('"`[]')
+                if index_name not in index_uses:
+                    index_uses.append(index_name)
+            elif re.search(r"\bUSING\s+INTEGER\s+PRIMARY\s+KEY\b", detail, re.IGNORECASE):
+                if "INTEGER PRIMARY KEY" not in index_uses:
+                    index_uses.append("INTEGER PRIMARY KEY")
+        summary = f"SQLite estimates {len(details)} planner step(s)."
+        if full_scan_tables:
+            summary += " Full scan: " + ", ".join(full_scan_tables) + "."
+        elif index_uses:
+            summary += " Index-assisted access: " + ", ".join(index_uses) + "."
+        else:
+            summary += " No full table scan was reported."
+        return QueryCostEstimate(
+            planner_steps=len(details),
+            full_scan_tables=full_scan_tables,
+            index_uses=index_uses,
+            summary=summary,
+        )

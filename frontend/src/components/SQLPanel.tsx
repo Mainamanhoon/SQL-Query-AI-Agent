@@ -13,6 +13,7 @@ import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { downloadSql } from '../services/csv';
+import type { SQLDialect } from '../types/chat';
 
 SyntaxHighlighter.registerLanguage('sql', sql);
 
@@ -21,7 +22,7 @@ interface Props {
   retries: number;
   running: boolean;
   darkMode?: boolean;
-  onRun: (sql: string) => Promise<void>;
+  onRun: (sql: string, dialect: SQLDialect) => Promise<void>;
 }
 
 export function SQLPanel({ query, retries, running, darkMode = false, onRun }: Props) {
@@ -29,11 +30,13 @@ export function SQLPanel({ query, retries, running, darkMode = false, onRun }: P
   const [editedQuery, setEditedQuery] = useState(query || '');
   const [editing, setEditing] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [dialect, setDialect] = useState<SQLDialect>('sqlite');
   useEffect(() => {
     setCopyStatus('idle');
     setEditedQuery(query || '');
     setEditing(false);
     setRunError(null);
+    setDialect('sqlite');
   }, [query]);
   useEffect(() => {
     if (copyStatus === 'idle') return;
@@ -53,7 +56,7 @@ export function SQLPanel({ query, retries, running, darkMode = false, onRun }: P
   async function run() {
     setRunError(null);
     try {
-      await onRun(editedQuery);
+      await onRun(editedQuery, dialect);
       setEditing(false);
     } catch (failure) {
       setRunError(failure instanceof Error ? failure.message : 'SQL execution failed.');
@@ -64,7 +67,17 @@ export function SQLPanel({ query, retries, running, darkMode = false, onRun }: P
     <section className="workspace-card sql-card" aria-label="Generated SQL">
       <div className="card-heading">
         <span>
-          <Code2 size={17} /> SQL query <span className="language-tag">SQLite</span>
+          <Code2 size={17} /> SQL query{' '}
+          <select
+            className="dialect-select"
+            aria-label="SQL dialect"
+            value={dialect}
+            onChange={(event) => setDialect(event.target.value as SQLDialect)}
+          >
+            <option value="sqlite">SQLite</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="mysql">MySQL</option>
+          </select>
         </span>
         <div className="card-actions">
           <button

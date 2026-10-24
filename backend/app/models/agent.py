@@ -5,7 +5,7 @@ from typing import Annotated, List, Optional, TypedDict
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
-from app.models.chat import Intent, ResponseStatus
+from app.models.chat import Intent, ResponseStatus, SQLDialect
 from app.models.database import QueryResults
 
 
@@ -28,3 +28,4 @@ class AgentState(TypedDict):
     optimization_tips: List[str]
     schema_context: str
     optimization_context: str
+    dialect: SQLDialect

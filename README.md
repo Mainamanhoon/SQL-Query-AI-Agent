@@ -203,14 +203,18 @@ ignored by Git and reproduced locally or during the image build.
 }
 ```
 
-Responses include `status`, `intent`, `generated_sql`, `is_valid`, `retry_count`,
-`explanation`, `original_error`, `optimization_tips`, and positional `query_results`.
+Responses include `status`, `intent`, `dialect`, `generated_sql`, `is_valid`,
+`retry_count`, `explanation`, `original_error`, `optimization_tips`, and positional
+`query_results`. Each result includes a deterministic SQLite `cost_estimate` based on
+`EXPLAIN QUERY PLAN`.
 `POST /chat/stream` accepts the same body and emits `status`, explanation `chunk`,
 and final `complete` SSE events; the final event is the same guarded response.
 Status is `success`, `clarification`, `rejected`, or `error`. SQL is null for
 unsuccessful responses. `/run-sql` accepts SQL from the editor and validates and
 executes it through the same SQLGlot and read-only SQLite guardrails without an LLM
-call. `/schema` exposes the sample schema; `/health` reports database readiness and
+call. Both `/chat` and `/run-sql` accept `dialect` as `sqlite`, `postgresql`, or `mysql`;
+non-SQLite read-only input is validated with SQLGlot and transpiled to SQLite before
+execution. `/schema` exposes the sample schema; `/health` reports database readiness and
 model configuration presence. `/api/*` aliases support the frontend proxy. Model
 configuration presence is not a live-provider health test.
 
@@ -229,9 +233,24 @@ as private user data. Selecting an older session restores its messages and previ
 SQL; a new conversation starts a separate server session.
 
 The UI also supports persisted dark mode, copy/download SQL, CSV result downloads,
-loading/error states, and streamed explanation text. The Docker Compose stack mounts a writable `chat_data` volume for local SQLite chat
+SQLite query-plan cost estimates, loading/error states, and streamed explanation text.
+The Docker Compose stack mounts a writable `chat_data` volume for local SQLite chat
 storage. For Vercel, configure `CHAT_DATABASE_URL` with a managed PostgreSQL URL in
 the backend project's Environment Variables and redeploy the backend.
+
+### Bonus coverage
+
+| Feature | Implementation |
+| --- | --- |
+| SQL execution | Guarded `/run-sql` endpoint and automatic execution against the seeded database |
+| Follow-up questions | Server-side sessions, bounded history, and `previous_sql` state |
+| Query cost estimation | SQLite `EXPLAIN QUERY PLAN` summary shown with every result |
+| Syntax highlighting | SQL-aware `react-syntax-highlighter` editor panel |
+| Multiple dialects | SQLGlot validation/transpilation for SQLite, PostgreSQL, and MySQL read-only SQL |
+| CSV export | Formula-safe client-side CSV download for result rows |
+| Prompt injection protection | Deterministic scope checks, isolated system prompts, AST validation, and DB authorizer |
+| Docker deployment | Backend/frontend Dockerfiles and a Docker Compose stack |
+| Tests | Backend unit/integration tests plus frontend unit tests and browser smoke checks |
 
 ## Verification
 
@@ -243,7 +262,7 @@ npm run build
 npm test
 ```
 
-Current checks: **93 backend tests and 11 frontend tests**. Backend tests use the real
+Current checks: **97 backend tests and 11 frontend tests**. Backend tests use the real
 seeded SQLite database and a scripted model, including repair after AST/schema and
 SQLite errors. Frontend tests exercise the actual HTTP client with controlled
 responses. These tests do not establish live LLM accuracy.
@@ -261,9 +280,10 @@ See [evaluation cases](docs/evaluation.md) for live model acceptance checks.
 - The assignment PDF supplies no concrete schema, so the requested four-table
   ecommerce schema is the source of truth. “Customers” means rows in `Users`.
 - This is a sample-data assignment app, not an authenticated multi-tenant product.
-- SQLite is the only supported SQL dialect. The `/chat/stream` endpoint streams
-  progress and explanation text; SQL and rows are sent only after final validation
-  and execution. Multiple SQL dialects are intentionally not supported.
+- SQLite is the execution database. PostgreSQL and MySQL read-only syntax is accepted
+  at the API boundary, validated with the requested SQLGlot dialect, and transpiled to
+  safe SQLite before execution. The `/chat/stream` endpoint streams progress and
+  explanation text; SQL and rows are sent only after final validation and execution.
 - Optimization recommendations are not presented as measured performance gains.
 - Read-only SQL functions are limited to the shared explicit allowlist in
   `backend/app/services/sql_policy.py`.

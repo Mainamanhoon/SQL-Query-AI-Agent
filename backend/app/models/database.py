@@ -15,6 +15,15 @@ class ForeignKey(BaseModel):
     referenced_column: str
 
 
+class QueryCostEstimate(BaseModel):
+    """Deterministic SQLite query-plan summary, not a measured benchmark."""
+
+    planner_steps: int = Field(ge=0)
+    full_scan_tables: List[str] = Field(default_factory=list)
+    index_uses: List[str] = Field(default_factory=list)
+    summary: str = Field(min_length=1, max_length=1000)
+
+
 class TableSchema(BaseModel):
     """Columns and relationships extracted from SQLite metadata."""
 
@@ -40,3 +49,4 @@ class QueryResults(BaseModel):
     truncated: bool = False
     elapsed_ms: float = 0
     row_limit: Optional[int] = None
+    cost_estimate: Optional[QueryCostEstimate] = None
