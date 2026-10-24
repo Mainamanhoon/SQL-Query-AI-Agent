@@ -10,8 +10,8 @@ the application.
 
 ## Setup and run
 
-The project runs as a Docker Compose stack or a single Docker image. The backend owns
-the model key; the frontend never receives it.
+The project runs as a Docker Compose stack. The backend owns the model key; the
+frontend never receives it.
 
 ### 1. Configure the model
 
@@ -57,19 +57,6 @@ docker compose logs -f
 docker compose down
 ```
 
-### 3. Build the combined production image
-
-The root `Dockerfile` builds the frontend and serves it from FastAPI. This is useful
-for a single-service deployment:
-
-```sh
-docker build -t querydesk .
-docker run --rm -p 8080:8000 --env-file .env querydesk
-```
-
-Open `http://localhost:8080`. The container honors the platform `PORT` variable and
-also exposes `/health`, `/schema`, `/chat`, and `/docs` under the same origin.
-
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -83,7 +70,6 @@ also exposes `/health`, `/schema`, `/chat`, and `/docs` under the same origin.
 | `QUERY_TIMEOUT_SECONDS` | `2` | SQLite progress-handler deadline |
 | `QUERY_ROW_LIMIT` | `200` | Returned row cap, with visible truncation status |
 | `CORS_ORIGINS` | `["http://localhost:5173"]` | JSON array of allowed frontend origins |
-| `FRONTEND_DIST` | unset | Optional static frontend directory for single-service deployment |
 
 The provider must support `/chat/completions`, JSON-object response mode, and
 `max_tokens`. The adapter is replaceable through the `LanguageModel` protocol;
@@ -208,7 +194,7 @@ Responses include `status`, `intent`, `generated_sql`, `is_valid`, `retry_count`
 Status is `success`, `clarification`, `rejected`, or `error`. SQL is null for
 unsuccessful responses. `/schema` exposes the sample schema; `/health` reports
 database readiness and model configuration presence. `/api/*` aliases support the
-single-service image. Model configuration presence is not a live-provider health test.
+frontend proxy. Model configuration presence is not a live-provider health test.
 
 Conversation history lives in browser memory and is sent with each turn. This avoids
 shared server conversation state and cross-user leakage; a page refresh starts a new
