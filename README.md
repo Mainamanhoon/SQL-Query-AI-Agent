@@ -39,8 +39,6 @@ LLM_MODEL=moonshotai/kimi-k3.1-pro
 LLM_MAX_TOKENS=1000
 ```
 
-Keep `.env` local. It is ignored by Git and must not be committed.
-
 ### 2. Run with Docker Compose
 
 Requires Docker Desktop or Docker Engine with Compose. From the repository root:
