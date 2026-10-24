@@ -199,6 +199,33 @@ async def test_valid_debug_query_does_not_require_an_original_error(
     assert result["original_error"] is None
 
 
+async def test_debug_followup_restores_previous_filter_when_pasted_sql_omits_it(
+    database: DatabaseService,
+) -> None:
+    """A valid pasted query cannot silently discard the prior conversational filter."""
+    model = ScriptedModel([decision("debug"), explanation()])
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    previous_sql = "SELECT id, name, state FROM Users WHERE state = 'California'"
+    result = await graph.ainvoke(
+        initial_state(
+            ChatRequest(
+                message=(
+                    'SELECT id, name, state FROM Users '
+                    "is this a right query, does it require any optimisation. debug it"
+                ),
+                previous_sql=previous_sql,
+            )
+        )
+    )
+    assert result["status"] == "success"
+    assert result["context_corrected"] is True
+    assert "WHERE" in result["generated_sql"].upper()
+    assert "CALIFORNIA" in result["generated_sql"].upper()
+    assert len(result["query_results"].rows) == 3
+    assert "previous conversation's filter" in result["original_error"]
+    assert len(model.calls) == 2
+
+
 async def test_invalid_debug_query_explains_original_error(
     database: DatabaseService,
 ) -> None:

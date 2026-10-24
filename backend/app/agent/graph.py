@@ -47,9 +47,20 @@ def route_schema(state: AgentState) -> Literal["inspect_debug", "generate"]:
     return "generate"
 
 
-def route_debug_inspection(state: AgentState) -> Literal["clarify", "generate"]:
-    """Route a debug request to clarification when no SQL was supplied."""
-    return "clarify" if state["intent"] == "clarify" else "generate"
+def route_debug_inspection(
+    state: AgentState,
+) -> Literal["clarify", "generate", "optimization"]:
+    """Route an inspected debug request to repair or the safe execution pipeline.
+
+    A context correction is already validated by ``debug_inspection_node`` and can
+    therefore continue through optimization, execution, and explanation without an
+    unnecessary model generation call.
+    """
+    if state["intent"] == "clarify":
+        return "clarify"
+    if state["context_corrected"]:
+        return "optimization"
+    return "generate"
 
 
 def route_validation(state: AgentState) -> Literal["optimization", "generate", "fallback"]:

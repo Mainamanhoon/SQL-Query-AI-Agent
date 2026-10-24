@@ -133,6 +133,7 @@ def initial_state(payload: ChatRequest) -> AgentState:
         schema_context="",
         optimization_context="",
         dialect=payload.dialect,
+        context_corrected=False,
     )
 
 

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from pydantic import ValidationError
+from sqlglot import exp, parse_one
 
 from app.agent.prompts import (
     EXPLAINER_PROMPT,
@@ -239,9 +240,63 @@ def optimization_node(state: AgentState) -> Dict[str, Any]:
 
 
 def _extract_debug_sql(message: str, previous_sql: str | None) -> str:
-    """Extract a likely SQL statement from a debug request or its prior query."""
+    """Extract only the SQL portion from a debug request with trailing prose.
+
+    Users commonly paste a query followed by a natural-language question. The
+    question is not part of the SQL statement and must not be sent to the parser
+    as if it were SQL.
+    """
     match = re.search(r"\b(?:SELECT|WITH)\b[\s\S]*", message, re.IGNORECASE)
-    return (match.group(0) if match else (previous_sql or "")).strip()
+    candidate_sql = (match.group(0) if match else (previous_sql or "")).strip()
+    if not candidate_sql:
+        return ""
+    trailing_prose = re.search(
+        r"\s+(?:is\s+this\b|does\s+this\b|check\s+if\b|validate\s+this\b|"
+        r"debug\s+it\b|is\s+it\b)[\s\S]*$",
+        candidate_sql,
+        re.IGNORECASE,
+    )
+    if trailing_prose is not None:
+        candidate_sql = candidate_sql[: trailing_prose.start()].rstrip(" ;")
+    return candidate_sql
+
+
+def _omitted_context_filter(
+    candidate_sql: str,
+    previous_sql: str | None,
+    dialect: str,
+) -> bool:
+    """Detect an unfiltered debug candidate that drops the prior query filter.
+
+    The comparison is deliberately conservative: both statements must be SELECTs,
+    use the same source and joins, the candidate must have no WHERE clause, and the
+    prior query must have one. Projection changes are allowed while the prior filter
+    is preserved by the caller.
+    """
+    if not previous_sql or re.search(r"\bWHERE\b", candidate_sql, re.IGNORECASE):
+        return False
+    if not re.search(r"\bWHERE\b", previous_sql, re.IGNORECASE):
+        return False
+    try:
+        candidate = parse_one(candidate_sql, read=dialect)
+        previous = parse_one(previous_sql, read=dialect)
+    except Exception:
+        return False
+    if not isinstance(candidate, exp.Select) or not isinstance(previous, exp.Select):
+        return False
+    candidate_from = candidate.args.get("from_")
+    previous_from = previous.args.get("from_")
+    if candidate_from is None or previous_from is None:
+        return False
+    candidate_source = candidate_from.sql(dialect=dialect).casefold()
+    previous_source = previous_from.sql(dialect=dialect).casefold()
+    if candidate_source != previous_source:
+        return False
+    candidate_joins = [join.sql(dialect=dialect) for join in candidate.args.get("joins", [])]
+    previous_joins = [join.sql(dialect=dialect) for join in previous.args.get("joins", [])]
+    normalized_candidate_joins = [join.casefold() for join in candidate_joins]
+    normalized_previous_joins = [join.casefold() for join in previous_joins]
+    return normalized_candidate_joins == normalized_previous_joins
 
 
 def debug_inspection_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
@@ -270,6 +325,26 @@ def debug_inspection_node(state: AgentState, dependencies: AgentDependencies) ->
             "generated_sql": candidate_sql,
             "error_msg": error_message,
             "original_error": error_message,
+        }
+    if _omitted_context_filter(candidate_sql, state["previous_sql"], state["dialect"]):
+        try:
+            contextual_sql = dependencies.validator.validate(
+                state["previous_sql"] or "", dialect=state["dialect"]
+            )
+        except SQLValidationError:
+            # A client-supplied stale previous_sql must never make a valid debug
+            # request fail; keep the validated candidate instead.
+            return {"generated_sql": validated_sql, "error_msg": None}
+        context_message = (
+            "The submitted SQL was valid but omitted the previous conversation's filter. "
+            "The prior filter was restored to preserve the follow-up request."
+        )
+        return {
+            "generated_sql": contextual_sql,
+            "is_valid": True,
+            "error_msg": None,
+            "original_error": context_message,
+            "context_corrected": True,
         }
     return {"generated_sql": validated_sql, "error_msg": None}
 

@@ -29,3 +29,4 @@ class AgentState(TypedDict):
     schema_context: str
     optimization_context: str
     dialect: SQLDialect
+    context_corrected: bool
