@@ -13,27 +13,35 @@ from app.agent.nodes import (
     executor_node,
     explainer_node,
     fallback_node,
+    optimization_node,
     rejection_node,
     router_node,
+    schema_retrieval_node,
+    scope_validation_node,
     sql_generator_node,
     validation_node,
 )
 from app.models.agent import AgentState
 
 
-def route_intent(state: AgentState) -> Literal["reject", "clarify", "inspect_debug", "generate"]:
-    """Choose the next node from the router's state without side effects.
+def route_scope(state: AgentState) -> Literal["reject", "clarify", "schema_retrieval"]:
+    """Choose the next node after explicit scope validation.
 
     Args:
         state: Classified intent and destructive flag.
 
     Returns:
-        Rejection, clarification, or SQL generation node name.
+        Rejection, clarification, or trusted schema retrieval node name.
     """
     if state["destructive"] or state["intent"] == "out_of_scope":
         return "reject"
     if state["intent"] == "clarify":
         return "clarify"
+    return "schema_retrieval"
+
+
+def route_schema(state: AgentState) -> Literal["inspect_debug", "generate"]:
+    """Route retrieved schema context into debugging or SQL generation."""
     if state["intent"] == "debug":
         return "inspect_debug"
     return "generate"
@@ -44,17 +52,17 @@ def route_debug_inspection(state: AgentState) -> Literal["clarify", "generate"]:
     return "clarify" if state["intent"] == "clarify" else "generate"
 
 
-def route_validation(state: AgentState) -> Literal["execute", "generate", "fallback"]:
+def route_validation(state: AgentState) -> Literal["optimization", "generate", "fallback"]:
     """Select execution, repair, or terminal fallback after validation.
 
     Args:
         state: Validation result and failure count.
 
     Returns:
-        Next node name without changing the state.
+        Optimization, repair, or terminal fallback node name.
     """
     if state["is_valid"]:
-        return "execute"
+        return "optimization"
     return "fallback" if state["retry_count"] >= 3 else "generate"
 
 
@@ -83,6 +91,9 @@ def build_graph(dependencies: AgentDependencies) -> CompiledStateGraph:
     """
     graph = StateGraph(AgentState)
     graph.add_node("router", partial(router_node, dependencies=dependencies))
+    graph.add_node("scope_validation", partial(scope_validation_node, dependencies=dependencies))
+    graph.add_node("schema_retrieval", partial(schema_retrieval_node, dependencies=dependencies))
+    graph.add_node("optimization", optimization_node)
     graph.add_node("generate", partial(sql_generator_node, dependencies=dependencies))
     graph.add_node("inspect_debug", partial(debug_inspection_node, dependencies=dependencies))
     graph.add_node("validate", partial(validation_node, dependencies=dependencies))
@@ -92,10 +103,13 @@ def build_graph(dependencies: AgentDependencies) -> CompiledStateGraph:
     graph.add_node("reject", rejection_node)
     graph.add_node("fallback", fallback_node)
     graph.add_edge(START, "router")
-    graph.add_conditional_edges("router", route_intent)
+    graph.add_edge("router", "scope_validation")
+    graph.add_conditional_edges("scope_validation", route_scope)
+    graph.add_conditional_edges("schema_retrieval", route_schema)
     graph.add_conditional_edges("inspect_debug", route_debug_inspection)
     graph.add_edge("generate", "validate")
     graph.add_conditional_edges("validate", route_validation)
+    graph.add_edge("optimization", "execute")
     graph.add_conditional_edges("execute", route_execution)
     for terminal_node in ["explain", "clarify", "reject", "fallback"]:
         graph.add_edge(terminal_node, END)

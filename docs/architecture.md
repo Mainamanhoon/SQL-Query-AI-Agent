@@ -17,6 +17,9 @@ worker threads never reuse another request's connection.
 | Component | Responsibility |
 | --- | --- |
 | Router | Classify request and detect refusal/clarification routes |
+| Scope validator | Apply deterministic out-of-scope and destructive-request checks |
+| Schema retrieval | Copy trusted DDL into state before generation |
+| Optimization phase | Review validated SQL and prepare safe readability/performance guidance without executing DDL |
 | Debug inspector | Validate supplied debug SQL and preserve the original error |
 | Generator | Generate or repair a SQL candidate for the chosen intent |
 | Validator | Enforce AST shape, identifiers, and supported joins |

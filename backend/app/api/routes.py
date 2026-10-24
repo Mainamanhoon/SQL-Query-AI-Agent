@@ -100,6 +100,8 @@ def initial_state(payload: ChatRequest) -> AgentState:
         clarification="",
         original_error=None,
         optimization_tips=[],
+        schema_context="",
+        optimization_context="",
     )
 
 

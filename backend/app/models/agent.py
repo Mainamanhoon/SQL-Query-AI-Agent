@@ -26,3 +26,5 @@ class AgentState(TypedDict):
     clarification: str
     original_error: Optional[str]
     optimization_tips: List[str]
+    schema_context: str
+    optimization_context: str

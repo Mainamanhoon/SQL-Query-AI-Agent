@@ -117,17 +117,21 @@ docs/             Schema, workflow/design notes, demo script, evaluation checkli
 
 ```mermaid
 flowchart TD
-    A[Router: query / debug / optimize / clarify / out of scope] -->|Debug SQL| D[Inspect original SQL]
-    A -->|Destructive or unrelated| R[Refuse]
-    A -->|Missing information| C[Ask for clarification]
-    A -->|Query, debug, optimize| G[Generate using history and previous_sql]
+    U[User request] --> A[Intent detection]
+    A --> S[Scope validation]
+    S -->|Destructive or unrelated| R[Refuse]
+    S -->|Missing information| C[Ask for clarification]
+    S --> H[Schema retrieval]
+    H -->|Debug| D[Inspect original SQL]
+    H -->|Query| G[Generate using history and previous_sql]
     D --> G
     G --> V[Validate AST, identifiers, and joins]
-    V -->|Valid| E[Execute through restricted SQLite]
+    V -->|Valid| O[SQL optimization phase]
     V -->|Invalid| F[Increment retry_count]
-    E -->|Database error| F
     F -->|Count below 3| G
     F -->|Count reaches 3| X[Graceful fallback]
+    O --> E[Execute through restricted SQLite]
+    E -->|Database error| F
     E -->|Success| P[Explain query and task-specific changes]
 ```
 

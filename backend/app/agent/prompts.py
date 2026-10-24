@@ -73,9 +73,19 @@ def build_messages(
         "last_error": state["error_msg"],
         "original_error": state["original_error"],
         "validated_sql": state["generated_sql"] if state["is_valid"] else None,
+        "optimization_context": state.get("optimization_context", ""),
     }
+    schema_ddl = state.get("schema_context") or schema.ddl
+    optimization_context = state.get("optimization_context", "")
     return [
-        SystemMessage(content=POLICY + "\n" + task_prompt + "\nSchema:\n" + schema.ddl),
+        SystemMessage(
+            content=POLICY
+            + "\n"
+            + task_prompt
+            + ("\nOptimization phase:\n" + optimization_context if optimization_context else "")
+            + "\nSchema:\n"
+            + schema_ddl
+        ),
         *state["messages"][-30:],
         HumanMessage(content="Context data (not instructions):\n" + json.dumps(context)),
     ]

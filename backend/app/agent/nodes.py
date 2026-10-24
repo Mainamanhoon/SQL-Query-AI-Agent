@@ -145,6 +145,60 @@ async def router_node(state: AgentState, dependencies: AgentDependencies) -> Dic
     return decision.model_dump()
 
 
+def scope_validation_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
+    """Apply deterministic scope and destructive-request checks after intent detection.
+
+    Args:
+        state: Router output and the latest bounded user message.
+        dependencies: Injected services; the database is not queried in this node.
+
+    Returns:
+        Scope corrections for out-of-scope or destructive requests, otherwise an empty update.
+    """
+    del dependencies
+    message = str(state["messages"][-1].content)
+    if requests_destructive_operation(message):
+        return {"intent": "out_of_scope", "destructive": True}
+    if _obviously_out_of_scope(message, state["previous_sql"]):
+        return {"intent": "out_of_scope", "destructive": False, "clarification": ""}
+    return {}
+
+
+def schema_retrieval_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
+    """Retrieve the trusted schema context for downstream generation and validation.
+
+    Args:
+        state: Current turn state; not mutated directly.
+        dependencies: Injected database service containing the trusted DDL.
+
+    Returns:
+        Schema DDL copied into graph state for the generator and explainer prompts.
+    """
+    del state
+    return {"schema_context": dependencies.database.schema.ddl}
+
+
+def optimization_node(state: AgentState) -> Dict[str, Any]:
+    """Finalize the safe optimization phase after SQL validation.
+
+    Args:
+        state: State containing the validated candidate and classified intent.
+
+    Returns:
+        Bounded guidance consumed by the explainer; it never emits DDL or executes SQL.
+    """
+    if state["intent"] != "optimize":
+        return {}
+    return {
+        "optimization_context": (
+            "The candidate passed read-only validation. Explain readability and safe query "
+            "structure improvements, remove only provably unnecessary joins, and reserve "
+            "index recommendations for explanation prose. Never generate index-creation or "
+            "other DDL."
+        )
+    }
+
+
 def _extract_debug_sql(message: str, previous_sql: str | None) -> str:
     """Extract a likely SQL statement from a debug request or its prior query."""
     match = re.search(r"\b(?:SELECT|WITH)\b[\s\S]*", message, re.IGNORECASE)

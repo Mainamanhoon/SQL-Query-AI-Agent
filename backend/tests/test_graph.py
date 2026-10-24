@@ -257,6 +257,8 @@ async def test_optimization_returns_advice_when_model_omits_tips(
     )
     assert result["status"] == "success"
     assert result["optimization_tips"]
+    assert "CREATE TABLE Users" in result["schema_context"]
+    assert result["optimization_context"]
     assert all("CREATE INDEX" not in tip.upper() for tip in result["optimization_tips"])
 
 
