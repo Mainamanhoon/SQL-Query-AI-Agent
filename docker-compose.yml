@@ -8,6 +8,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-1000}
       QUERY_TIMEOUT_SECONDS: ${QUERY_TIMEOUT_SECONDS:-2}
       QUERY_ROW_LIMIT: ${QUERY_ROW_LIMIT:-200}
     read_only: true

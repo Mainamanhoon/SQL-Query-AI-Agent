@@ -10,53 +10,66 @@ are available. A live public URL and the final demo video are **not yet availabl
 Live model testing needs `LLM_API_KEY` and `LLM_MODEL`; publishing needs a hosting
 account. No model responses are simulated in the application.
 
-## Run with Docker
+## Setup and run
 
-Requires Docker Desktop or Docker Engine with Compose.
+The project can be run as two local development processes or as a Docker Compose
+stack. The backend owns the model key; the frontend never receives it.
 
-```sh
-cp .env.example .env
-# Set LLM_API_KEY and LLM_MODEL in .env. Change LLM_BASE_URL if necessary.
-docker compose up --build -d
+### 1. Configure the model
+
+Create a local environment file and set a model supported by your OpenAI-compatible
+provider. For OpenRouter, for example:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
 ```
 
-On PowerShell, use `Copy-Item .env.example .env` for the first command.
-Open **http://localhost:8080**. API documentation is at **http://localhost:8000/docs**.
-The image includes a seeded database. No database server, login, or manual migration
-is needed. Without model credentials the UI and schema load, but chat reports that
-model setup is required.
-
-```sh
-docker compose down
+```dotenv
+LLM_API_KEY=your-provider-key
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_MODEL=moonshotai/kimi-k3.1-pro
+LLM_MAX_TOKENS=1000
 ```
 
-## Run locally
+Keep `.env` local. It is ignored by Git and must not be committed.
 
-Requires Python 3.10+ and Node.js 22.12+. Run backend commands from the repository root.
+### 2. Run the backend locally
 
-### Backend — PowerShell
+Requirements: Python 3.10 or newer. Run these commands from the repository root.
+
+PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r backend/requirements-dev.txt
 .\.venv\Scripts\python -m pip install --no-deps -e backend
-Copy-Item .env.example .env
+Copy-Item .env.example .env       # skip if .env already exists
 .\.venv\Scripts\python backend/seed_db.py
 .\.venv\Scripts\python -m uvicorn app.main:create_app --factory --reload
 ```
 
-### Backend — macOS/Linux
+macOS/Linux:
 
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements-dev.txt
 .venv/bin/python -m pip install --no-deps -e backend
-cp .env.example .env
+cp .env.example .env              # skip if .env already exists
 .venv/bin/python backend/seed_db.py
 .venv/bin/python -m uvicorn app.main:create_app --factory --reload
 ```
 
-### Frontend — separate terminal
+The API is available at `http://localhost:8000`. Useful endpoints are:
+
+- `GET /health` - readiness and model configuration status
+- `GET /schema` - trusted database schema
+- `POST /chat` - conversational SQL requests
+- `GET /docs` - interactive OpenAPI documentation
+
+### 3. Run the frontend locally
+
+Requirements: Node.js 22.12 or newer. Open a second terminal:
 
 ```sh
 cd frontend
@@ -64,9 +77,53 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:5173**. Vite proxies `/api` to the backend on port 8000.
-For a separately hosted frontend, set `VITE_API_URL` at build time and add its origin
-to backend `CORS_ORIGINS`. Use `npm.cmd` instead of `npm` if PowerShell blocks npm's script.
+Open `http://localhost:5173`. Vite proxies `/api` requests to the backend on port
+8000. For a separately hosted frontend, set `VITE_API_URL` at build time and add its
+origin to `CORS_ORIGINS`. On PowerShell, use `npm.cmd` if script execution blocks npm.
+
+### 4. Run with Docker Compose
+
+Requires Docker Desktop or Docker Engine with Compose. From the repository root:
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
+```
+
+macOS/Linux:
+
+```sh
+cp .env.example .env
+docker compose up --build -d
+```
+
+Edit `.env` before starting and set `LLM_API_KEY`, `LLM_MODEL`, and (if needed)
+`LLM_BASE_URL`.
+
+Compose starts the backend on port 8000 and the Vite frontend on port 8080. Open
+`http://localhost:8080`; API docs remain at `http://localhost:8000/docs`.
+The backend image seeds its own database during the image build, so no database
+server or migration command is required. View logs or stop the stack with:
+
+```sh
+docker compose logs -f
+docker compose down
+```
+
+### 5. Build the combined production image
+
+The root `Dockerfile` builds the frontend and serves it from FastAPI. This is useful
+for a single-service deployment:
+
+```sh
+docker build -t querydesk .
+docker run --rm -p 8080:8000 --env-file .env querydesk
+```
+
+Open `http://localhost:8080`. The container honors the platform `PORT` variable and
+also exposes `/health`, `/schema`, `/chat`, and `/docs` under the same origin.
 
 ## Configuration
 
