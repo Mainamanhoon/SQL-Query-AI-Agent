@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { listSessions, runSQL as runSQLRequest, sendMessage, syncSession } from '../services/api';
+import {
+  listSessions,
+  runSQL as runSQLRequest,
+  sendMessageStream,
+  syncSession,
+} from '../services/api';
 import type { ChatMessage, ChatResponse, ChatSession } from '../types/chat';
 
 const SESSION_STORAGE_KEY = 'querydesk.sessions.v1';
@@ -80,6 +85,7 @@ export function useChat() {
   const [loading, setLoading] = useState(false);
   const [sqlRunning, setSqlRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState('');
   const activeRequest = useRef<AbortController | null>(null);
   const editorRequest = useRef<AbortController | null>(null);
   const persistenceReady = useRef(false);
@@ -185,14 +191,18 @@ export function useChat() {
       messages: [...session.messages, newMessage],
     }));
     setLoading(true);
+    setStreamingText('');
     setError(null);
     try {
-      const response = await sendMessage(
+      const response = await sendMessageStream(
         message,
         activeSession.messages,
         activeSession.previousSql,
         controller.signal,
         activeSession.id,
+        (chunk) => {
+          if (!controller.signal.aborted) setStreamingText((current) => current + chunk);
+        },
       );
       if (controller.signal.aborted) return;
       const nextPreviousSql =
@@ -229,6 +239,7 @@ export function useChat() {
       if (activeRequest.current === controller) {
         activeRequest.current = null;
         setLoading(false);
+        setStreamingText('');
       }
     }
   }
@@ -308,6 +319,7 @@ export function useChat() {
     messages,
     loading,
     error,
+    streamingText,
     selectedResponse,
     sqlRunning,
     sessions: sessionState.sessions,

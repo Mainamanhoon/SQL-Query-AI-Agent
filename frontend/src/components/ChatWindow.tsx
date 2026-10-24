@@ -11,12 +11,13 @@ const examples = [
 interface Props {
   messages: ChatMessage[];
   loading: boolean;
+  streamingText: string;
   error: string | null;
   onSend: (text: string) => Promise<void>;
   onSelect: (response: ChatResponse) => void;
 }
 
-export function ChatWindow({ messages, loading, error, onSend, onSelect }: Props) {
+export function ChatWindow({ messages, loading, streamingText, error, onSend, onSelect }: Props) {
   const [draft, setDraft] = useState('');
   const end = useRef<HTMLDivElement>(null);
   const lastSubmitted = useRef('');
@@ -97,12 +98,21 @@ export function ChatWindow({ messages, loading, error, onSend, onSelect }: Props
             </article>
           ))
         )}
-        {loading && (
+        {loading && streamingText ? (
+          <article className="message message-assistant streaming-message">
+            <div className="message-label">
+              <Bot size={16} />
+              <strong>QueryDesk</strong>
+            </div>
+            <p>{streamingText}</p>
+            <span className="streaming-cursor" aria-label="Streaming response" />
+          </article>
+        ) : loading ? (
           <div className="thinking">
             <span className="pulse-dot" /> Working through your question
             <span className="thinking-dots">…</span>
           </div>
-        )}
+        ) : null}
         {error && (
           <div className="error-notice" role="alert">
             {error}

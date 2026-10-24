@@ -106,3 +106,16 @@ def test_server_sessions_restore_context_between_requests(
             client.get("/sessions", headers={"X-Client-ID": "browser-b"}).json()["sessions"]
             == []
         )
+
+
+def test_chat_stream_emits_safe_progress_and_final_response(database_path: Path) -> None:
+    """Streaming exposes explanation chunks but delays SQL until graph completion."""
+    model = ScriptedModel([decision(), "SELECT name FROM Users", explanation()])
+    with TestClient(create_app(Settings(database_path=database_path), model)) as client:
+        response = client.post("/chat/stream", json={"message": "Show users"})
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        assert "event: status" in response.text
+        assert "event: chunk" in response.text
+        assert "event: complete" in response.text
+        assert '"generated_sql"' in response.text

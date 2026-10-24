@@ -6,8 +6,10 @@ import {
   Layers3,
   Menu,
   MessageSquareCode,
+  Moon,
   Plus,
   ShieldCheck,
+  Sun,
   Table2,
   X,
 } from 'lucide-react';
@@ -29,7 +31,16 @@ export default function App() {
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = localStorage.getItem('querydesk.theme');
+    return stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const [conversationVersion, setConversationVersion] = useState(0);
+
+  useEffect(() => {
+    localStorage.setItem('querydesk.theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   useEffect(() => {
     let active = true;
@@ -57,7 +68,7 @@ export default function App() {
   }[connection];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${darkMode ? 'theme-dark' : ''}`}>
       {sidebarOpen && (
         <button
           className="sidebar-backdrop"
@@ -189,6 +200,15 @@ export default function App() {
             <Database size={12} />
             <span>SQLite</span>
           </div>
+          <button
+            className="theme-toggle"
+            type="button"
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-pressed={darkMode}
+            onClick={() => setDarkMode((value) => !value)}
+          >
+            {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
         </header>
         <div className="page-heading">
           <div>
@@ -231,6 +251,7 @@ export default function App() {
             key={conversationVersion}
             messages={chat.messages}
             loading={chat.loading}
+            streamingText={chat.streamingText}
             error={chat.error}
             onSend={chat.send}
             onSelect={chat.setSelectedResponse}
@@ -247,6 +268,7 @@ export default function App() {
                 query={response?.generated_sql || null}
                 retries={response?.retry_count || 0}
                 running={chat.sqlRunning}
+                darkMode={darkMode}
                 onRun={chat.runSql}
               />
               <ExplanationBox response={response} />

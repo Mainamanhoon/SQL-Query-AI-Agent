@@ -1,12 +1,15 @@
 """Chat transport and safe projections of internal graph state."""
 
+import asyncio
+import json
 import re
 import sqlite3
 from datetime import datetime, timezone
-from typing import Annotated, List, Optional
+from typing import Annotated, AsyncIterator, List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
 from langgraph.graph.state import CompiledStateGraph
@@ -162,12 +165,13 @@ def _session_after_turn(
         previous_sql=response.generated_sql or previous_sql,
         selected_response=response,
     )
-@router.post("/chat", response_model=ChatResponse)
-async def chat(
+
+
+async def _process_chat(
     payload: ChatRequest,
-    graph: Annotated[CompiledStateGraph, Depends(get_graph)],
-    chat_store: Annotated[ChatStore, Depends(get_chat_store)],
-    client_id: Annotated[Optional[str], Depends(get_optional_client_id)],
+    graph: CompiledStateGraph,
+    chat_store: ChatStore,
+    client_id: Optional[str],
 ) -> ChatResponse:
     """Run one graph turn and expose only a safe public response.
 
@@ -229,6 +233,60 @@ async def chat(
         except ChatStoreError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
     return response
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(
+    payload: ChatRequest,
+    graph: Annotated[CompiledStateGraph, Depends(get_graph)],
+    chat_store: Annotated[ChatStore, Depends(get_chat_store)],
+    client_id: Annotated[Optional[str], Depends(get_optional_client_id)],
+) -> ChatResponse:
+    """Run one complete graph turn for clients that prefer a regular JSON response."""
+    return await _process_chat(payload, graph, chat_store, client_id)
+
+
+def _sse_event(event_name: str, payload: object) -> str:
+    """Encode one JSON Server-Sent Event frame."""
+    return f"event: {event_name}\ndata: {json.dumps(payload, separators=(',', ':'))}\n\n"
+
+
+async def _stream_explanation(explanation: str, chunk_size: int = 72) -> AsyncIterator[str]:
+    """Yield safe explanation text in small frames after the graph succeeds."""
+    for offset in range(0, len(explanation), chunk_size):
+        yield _sse_event("chunk", {"text": explanation[offset : offset + chunk_size]})
+        await asyncio.sleep(0)
+
+
+@router.post("/chat/stream")
+async def stream_chat(
+    payload: ChatRequest,
+    graph: Annotated[CompiledStateGraph, Depends(get_graph)],
+    chat_store: Annotated[ChatStore, Depends(get_chat_store)],
+    client_id: Annotated[Optional[str], Depends(get_optional_client_id)],
+) -> StreamingResponse:
+    """Stream progress, explanation chunks, and the final guarded response as SSE.
+
+    SQL and result rows are emitted only in the final event, after the same AST,
+    schema, and read-only execution checks used by the JSON endpoint have passed.
+    """
+
+    async def events() -> AsyncIterator[str]:
+        """Run one turn and translate its safe milestones into SSE frames."""
+        yield _sse_event("status", {"state": "processing"})
+        try:
+            response = await _process_chat(payload, graph, chat_store, client_id)
+            async for chunk in _stream_explanation(response.explanation):
+                yield chunk
+            yield _sse_event("complete", {"response": response.model_dump(mode="json")})
+        except HTTPException as error:
+            yield _sse_event("error", {"detail": str(error.detail), "status": error.status_code})
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/sessions", response_model=SessionListResponse)

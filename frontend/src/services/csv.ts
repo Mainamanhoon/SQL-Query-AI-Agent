@@ -20,3 +20,12 @@ export function downloadResults(results: QueryResults): void {
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export function downloadSql(sql: string): void {
+  const url = URL.createObjectURL(new Blob([sql], { type: 'text/sql;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'query.sql';
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

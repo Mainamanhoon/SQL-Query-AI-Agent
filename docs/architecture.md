@@ -26,6 +26,12 @@ worker threads never reuse another request's connection.
 | API | Validate transport input and project safe output |
 | React hook | Keep history, previous SQL, request state, and cancellation |
 
+The frontend uses `/chat/stream` for conversational turns. The stream sends a
+processing event and explanation chunks, then emits SQL/results only in the final
+event after the graph has completed validation and read-only execution. SQL and CSV
+downloads are client-side Blob downloads; no write-capable database endpoint is
+introduced.
+
 `AgentState` is defined once in `models/agent.py` and exposed through `agent/state.py`.
 `messages` uses LangGraph's `add_messages` reducer. All other fields use ordinary
 last-update semantics. A new HTTP turn creates fresh transient state and carries

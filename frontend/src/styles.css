@@ -1270,3 +1270,202 @@ button svg {
     scroll-behavior: auto !important;
   }
 }
+
+/* Dark theme */
+.app-shell.theme-dark {
+  color: #dce7de;
+  background: #111815;
+}
+.theme-dark .sidebar,
+.theme-dark .output-pane {
+  background: #151e19;
+  border-color: #29382e;
+}
+.theme-dark .topbar {
+  background: #121a16;
+  border-color: #29382e;
+}
+.theme-dark .brand,
+.theme-dark .page-heading h1,
+.theme-dark .welcome h2,
+.theme-dark .card-heading > span,
+.theme-dark .pane-heading > span:first-child {
+  color: #dce8dc;
+}
+.theme-dark .sidebar-workspace,
+.theme-dark .workbench,
+.theme-dark .chat-pane,
+.theme-dark .workspace-card,
+.theme-dark .composer,
+.theme-dark .connection-pill {
+  background: #18221c;
+  border-color: #304034;
+}
+.theme-dark .workbench {
+  box-shadow: 0 5px 24px #00000033;
+}
+.theme-dark .sidebar-workspace,
+.theme-dark .pane-heading,
+.theme-dark .card-heading {
+  border-color: #29382e;
+}
+.theme-dark .workspace-avatar,
+.theme-dark .sidebar-active,
+.theme-dark .session-item:hover,
+.theme-dark .session-item-active,
+.theme-dark .message-user p,
+.theme-dark .suggestion,
+.theme-dark .language-tag {
+  background: #223126;
+  border-color: #354a38;
+}
+.theme-dark .new-chat,
+.theme-dark .suggestion {
+  color: #d0e2d1;
+  background: #1b281f;
+  border-color: #3a4e3c;
+}
+.theme-dark .new-chat:hover,
+.theme-dark .suggestion:hover {
+  background: #2b3e2d;
+}
+.theme-dark .sidebar-label,
+.theme-dark .sidebar-workspace small,
+.theme-dark .schema-heading > span:last-child,
+.theme-dark .schema-columns small,
+.theme-dark .subtle-label,
+.theme-dark .connection-pill,
+.theme-dark .page-heading p,
+.theme-dark .composer-bottom > span,
+.theme-dark .chat-footnote,
+.theme-dark .session-item small,
+.theme-dark .breadcrumbs,
+.theme-dark .sample-badge {
+  color: #8fa594;
+}
+.theme-dark .sidebar-active,
+.theme-dark .schema-table summary,
+.theme-dark .schema-columns > div,
+.theme-dark .message p,
+.theme-dark .welcome > p,
+.theme-dark .suggestion small,
+.theme-dark .text-button,
+.theme-dark .card-heading > span > svg,
+.theme-dark .connection-pill svg {
+  color: #aec4ae;
+}
+.theme-dark .schema-placeholder,
+.theme-dark .help-button,
+.theme-dark .database-label {
+  color: #9ab09b;
+}
+.theme-dark .composer textarea {
+  color: #e1eee2;
+}
+.theme-dark .composer textarea::placeholder {
+  color: #718675;
+}
+.theme-dark .safety-card {
+  color: #b7d5ad;
+  background: #203126;
+  border-color: #36503a;
+}
+.theme-dark .safety-card p {
+  color: #9ab398;
+}
+.theme-dark .empty-code,
+.theme-dark .empty-results,
+.theme-dark .results-footer,
+.theme-dark .sql-footer,
+.theme-dark .result-count {
+  color: #8ea390;
+}
+.theme-dark .small-button,
+.theme-dark .sql-editor {
+  color: #d8e8da;
+  background: #1c291f;
+  border-color: #3a4e3c;
+}
+.theme-dark .small-button:hover:not(:disabled) {
+  background: #2b3e2d;
+}
+.theme-dark .sql-footer {
+  background: #152118;
+  border-color: #2b3b2f;
+}
+.theme-dark .explanation-box h3,
+.theme-dark .explanation-box p,
+.theme-dark .debug-detail strong,
+.theme-dark .optimization-tips strong,
+.theme-dark .optimization-tips ul {
+  color: #b5c9af;
+}
+.theme-dark .table-scroll th {
+  color: #b8ceb3;
+  background: #243529;
+}
+.theme-dark .table-scroll td {
+  color: #c0d0bf;
+  border-color: #2e4032;
+}
+.theme-dark .table-scroll tbody tr:hover {
+  background: #223126;
+}
+.theme-dark .table-illustration {
+  background: #1b281f;
+  border-color: #3c513e;
+}
+.theme-dark .table-spark {
+  background: #18221c;
+}
+.theme-dark .setup-banner {
+  color: #e5c47b;
+  background: #332c1c;
+  border-color: #5d4d2e;
+}
+.theme-dark .error-notice,
+.theme-dark .sql-run-error {
+  color: #f0ae93;
+  background: #321f1a;
+  border-color: #674237;
+}
+.theme-dark .message-tag {
+  color: #e8c579;
+  background: #392f1c;
+}
+.theme-dark .theme-toggle {
+  color: #f0ca78;
+  border-color: #465744;
+  background: #1d2a20;
+}
+.theme-dark .help-panel {
+  color: #d8e7da;
+  background: #1d2a21;
+  border-color: #3b5240;
+}
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  color: #63765f;
+  border: 1px solid #dfe6d7;
+  border-radius: 7px;
+  background: #fff;
+}
+.theme-toggle:hover {
+  background: #e9efe4;
+}
+.streaming-message {
+  border-left: 2px solid #91ae73;
+  padding-left: 12px;
+}
+.streaming-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 15px;
+  margin-left: 3px;
+  vertical-align: -2px;
+  background: #83a264;
+  animation: pulse 1s infinite;
+}

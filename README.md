@@ -201,6 +201,8 @@ ignored by Git and reproduced locally or during the image build.
 
 Responses include `status`, `intent`, `generated_sql`, `is_valid`, `retry_count`,
 `explanation`, `original_error`, `optimization_tips`, and positional `query_results`.
+`POST /chat/stream` accepts the same body and emits `status`, explanation `chunk`,
+and final `complete` SSE events; the final event is the same guarded response.
 Status is `success`, `clarification`, `rejected`, or `error`. SQL is null for
 unsuccessful responses. `/run-sql` accepts SQL from the editor and validates and
 executes it through the same SQLGlot and read-only SQLite guardrails without an LLM
@@ -222,7 +224,8 @@ identifier is not authentication—add account authentication before treating se
 as private user data. Selecting an older session restores its messages and previous
 SQL; a new conversation starts a separate server session.
 
-The Docker Compose stack mounts a writable `chat_data` volume for local SQLite chat
+The UI also supports persisted dark mode, copy/download SQL, CSV result downloads,
+loading/error states, and streamed explanation text. The Docker Compose stack mounts a writable `chat_data` volume for local SQLite chat
 storage. For Vercel, configure `CHAT_DATABASE_URL` with a managed PostgreSQL URL in
 the backend project's Environment Variables and redeploy the backend.
 
@@ -236,7 +239,7 @@ npm run build
 npm test
 ```
 
-Current checks: **77 backend tests and 9 frontend tests**. Backend tests use the real
+Current checks: **78 backend tests and 10 frontend tests**. Backend tests use the real
 seeded SQLite database and a scripted model, including repair after AST/schema and
 SQLite errors. Frontend tests exercise the actual HTTP client with controlled
 responses. These tests do not establish live LLM accuracy.
@@ -254,8 +257,9 @@ See [evaluation cases](docs/evaluation.md) for live model acceptance checks.
 - The assignment PDF supplies no concrete schema, so the requested four-table
   ecommerce schema is the source of truth. “Customers” means rows in `Users`.
 - This is a sample-data assignment app, not an authenticated multi-tenant product.
-- SQLite is the only supported SQL dialect. Streaming and multiple dialects were
-  not added because correctness and the required guardrails take priority.
+- SQLite is the only supported SQL dialect. The `/chat/stream` endpoint streams
+  progress and explanation text; SQL and rows are sent only after final validation
+  and execution. Multiple SQL dialects are intentionally not supported.
 - Optimization recommendations are not presented as measured performance gains.
 - Read-only SQL functions are limited to the shared explicit allowlist in
   `backend/app/services/sql_policy.py`.

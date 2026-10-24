@@ -1,8 +1,18 @@
-import { Check, CheckCheck, Code2, Copy, LoaderCircle, Pencil, Play } from 'lucide-react';
+import {
+  Check,
+  CheckCheck,
+  Code2,
+  Copy,
+  Download,
+  LoaderCircle,
+  Pencil,
+  Play,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql';
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { downloadSql } from '../services/csv';
 
 SyntaxHighlighter.registerLanguage('sql', sql);
 
@@ -10,10 +20,11 @@ interface Props {
   query: string | null;
   retries: number;
   running: boolean;
+  darkMode?: boolean;
   onRun: (sql: string) => Promise<void>;
 }
 
-export function SQLPanel({ query, retries, running, onRun }: Props) {
+export function SQLPanel({ query, retries, running, darkMode = false, onRun }: Props) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [editedQuery, setEditedQuery] = useState(query || '');
   const [editing, setEditing] = useState(false);
@@ -84,6 +95,14 @@ export function SQLPanel({ query, retries, running, onRun }: Props) {
                 ? 'Copy failed'
                 : 'Copy SQL'}
           </button>
+          <button
+            className="small-button"
+            type="button"
+            onClick={() => editedQuery && downloadSql(editedQuery)}
+            disabled={!query}
+          >
+            <Download size={13} /> Download SQL
+          </button>
         </div>
       </div>
       {query ? (
@@ -101,7 +120,7 @@ export function SQLPanel({ query, retries, running, onRun }: Props) {
         ) : (
           <SyntaxHighlighter
             language="sql"
-            style={oneLight}
+            style={darkMode ? oneDark : oneLight}
             showLineNumbers
             wrapLongLines
             customStyle={{

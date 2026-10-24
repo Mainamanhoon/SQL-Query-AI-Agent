@@ -48,7 +48,9 @@ describe('conversation state', () => {
     await act(async () => {
       await result.current.send('Only California');
     });
-    const chatCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/chat'));
+    const chatCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith('/chat/stream'),
+    );
     const payload = JSON.parse(String(chatCalls[1][1]?.body));
     expect(payload.message).toBe('Only California');
     expect(payload.previous_sql).toBe(success.generated_sql);
@@ -61,7 +63,7 @@ describe('conversation state', () => {
   it('retains previous SQL across clarification responses', async () => {
     let chatCall = 0;
     fetchMock.mockImplementation(async (input) => {
-      if (!String(input).endsWith('/chat')) return response({ sessions: [] });
+      if (!String(input).endsWith('/chat/stream')) return response({ sessions: [] });
       const responses = [
         success,
         { ...success, status: 'clarification' as const, generated_sql: null },
@@ -79,7 +81,9 @@ describe('conversation state', () => {
     await act(async () => {
       await result.current.send('I mean California');
     });
-    const chatCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/chat'));
+    const chatCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith('/chat/stream'),
+    );
     expect(JSON.parse(String(chatCalls[2][1]?.body)).previous_sql).toBe(
       success.generated_sql,
     );
