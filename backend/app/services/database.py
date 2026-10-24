@@ -7,6 +7,7 @@ from typing import Callable, Optional
 
 from app.models.database import DatabaseSchema, QueryResults
 from app.services.schema import read_schema
+from app.services.sql_policy import READ_ONLY_SQL_FUNCTIONS
 
 Authorizer = Callable[[int, Optional[str], Optional[str], Optional[str], Optional[str]], int]
 
@@ -33,10 +34,10 @@ class DatabaseService:
         self.schema: DatabaseSchema = read_schema(database_path)
 
     def _authorizer(self) -> Authorizer:
-        """Build a deny-by-default callback for application-table reads only.
+        """Build a deny-by-default callback for approved read-only actions.
 
         Returns:
-            A callback allowing only SELECT and READ actions, without side effects.
+            A callback allowing SELECT, application-table READ, and approved functions.
         """
         table_names = {name.casefold() for name in self.schema.tables}
 
@@ -61,6 +62,13 @@ class DatabaseService:
             """
             if action == sqlite3.SQLITE_SELECT:
                 return sqlite3.SQLITE_OK
+            if action == sqlite3.SQLITE_FUNCTION:
+                function_name = (column_name or table_name or "").casefold()
+                return (
+                    sqlite3.SQLITE_OK
+                    if function_name in READ_ONLY_SQL_FUNCTIONS
+                    else sqlite3.SQLITE_DENY
+                )
             if (
                 action == sqlite3.SQLITE_READ
                 and (database_name == "main" or (database_name is None and column_name == ""))

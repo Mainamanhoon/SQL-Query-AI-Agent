@@ -142,8 +142,9 @@ provides prose suggestions without index-creation DDL. See the actual
    must connect sources through declared foreign-key equalities. Cartesian joins,
    recursive CTEs, and unsupported relationship patterns are rejected.
 3. Execute with a fresh `mode=ro` connection, extension loading disabled, and a
-   deny-by-default authorizer. Only `SQLITE_SELECT` and application-table
-   `SQLITE_READ` actions are allowed. System tables and attached databases are blocked.
+   deny-by-default authorizer. It allows `SQLITE_SELECT`, application-table
+   `SQLITE_READ`, and an explicit allowlist of read-only SQL functions for analytics.
+   System tables, attached databases, extension loading, and write actions are blocked.
 4. Use a progress-handler deadline and fetch at most one row beyond the display cap.
    The response reports truncation. Connection lock timeout is configured separately
    from the execution progress check.
@@ -151,10 +152,9 @@ provides prose suggestions without index-creation DDL. See the actual
    internal. Client messages cannot supply a system role; history and previous SQL
    remain untrusted context. CSV exports escape formulas and quoted cells.
 
-**The requested two-action authorizer blocks SQL functions**, including `COUNT`,
-`SUM`, `AVG`, date functions, and `LOWER`. Such requests cannot currently produce
-successful analytics results. Enabling them requires explicit approval for a small
-`SQLITE_FUNCTION` allowlist. The application does not silently relax this requirement.
+The function allowlist covers common read-only aggregates, window functions, string,
+numeric, date/time, and JSON functions. SQLGlot checks the same allowlist before
+execution, while the SQLite authorizer enforces it again at the database boundary.
 Top-level `UNION`, `INTERSECT`, `EXCEPT`, and `EXPLAIN` are also rejected by the
 SELECT-root rule. These are intentional supported-language limits, not claims that
 those operations are inherently destructive.
@@ -232,4 +232,5 @@ See [evaluation cases](docs/evaluation.md) for live model acceptance checks.
 - SQLite is the only supported SQL dialect. Streaming and multiple dialects were
   not added because correctness and the required guardrails take priority.
 - Optimization recommendations are not presented as measured performance gains.
-- The strict function restriction remains in place until explicitly changed.
+- Read-only SQL functions are limited to the shared explicit allowlist in
+  `backend/app/services/sql_policy.py`.

@@ -12,7 +12,7 @@ out of the recording. Upload the finished recording and add its link to the READ
 | 1:35–2:05 | Submit “Debug: SELECT fullname FROM Users.” Show the corrected column and explanation of the original error. |
 | 2:05–2:35 | Optimize a state-filter query. Show equivalent SQL and index suggestions in prose; explain that the app never executes schema changes. |
 | 2:35–3:00 | Ask “Show the best customers” to demonstrate clarification, then an unrelated sports question and “Delete all users” to demonstrate refusal. |
-| 3:00–3:30 | Briefly show the graph diagram and tests. Explain the exactly-one-SELECT AST rule, schema validation, read-only connection, and three-failure repair cap. State the current aggregate-function restriction honestly. |
+| 3:00–3:30 | Briefly show the graph diagram and tests. Explain the exactly-one-SELECT AST rule, schema validation, read-only connection, safe function allowlist, and three-failure repair cap. |
 | 3:30–3:45 | Show responsive layout, repository, README, and the public deployment URL. |
 
 If the live model already generates valid SQL, do not invent a self-healing event.

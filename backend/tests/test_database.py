@@ -40,7 +40,6 @@ def test_schema_contains_columns_and_relationships(database: DatabaseService) ->
         "ATTACH DATABASE ':memory:' AS other",
         "SELECT * FROM sqlite_master",
         "SELECT load_extension('bad')",
-        "SELECT COUNT(*) FROM Users",
     ],
 )
 def test_authorizer_denies_unapproved_actions(database: DatabaseService, sql: str) -> None:
@@ -48,6 +47,15 @@ def test_authorizer_denies_unapproved_actions(database: DatabaseService, sql: st
     with pytest.raises(sqlite3.DatabaseError):
         database.execute(sql)
     assert len(database.execute("SELECT id FROM Users").rows) == 6
+
+
+def test_authorizer_allows_read_only_aggregates(database: DatabaseService) -> None:
+    """Safe aggregate functions work without permitting writes or extensions."""
+    result = database.execute(
+        "SELECT state, COUNT(*) AS user_count FROM Users GROUP BY state ORDER BY state"
+    )
+    assert result.columns == ["state", "user_count"]
+    assert result.rows == [["California", 3], ["New York", 1], ["Texas", 1], ["Washington", 1]]
 
 
 def test_result_limit_preserves_columns(database_path: Path) -> None:

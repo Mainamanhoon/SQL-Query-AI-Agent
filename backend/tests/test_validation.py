@@ -69,6 +69,7 @@ def test_rejects_unsafe_or_invalid_sql(database: DatabaseService, sql: str) -> N
         ("SELECT 'DROP TABLE Users; --' AS note FROM Users LIMIT 1", 1),
         ("SELECT name AS customer FROM Users ORDER BY customer", 6),
         ("SELECT p.price_cents / 100.0 AS price FROM Products p", 6),
+        ("SELECT state, COUNT(*) AS user_count FROM Users GROUP BY state", 4),
     ],
 )
 def test_valid_queries_resolve_scopes_and_execute(

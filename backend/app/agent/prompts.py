@@ -36,9 +36,9 @@ For optimize: improve formatting and safe query structure while preserving resul
 only when their removal is provably equivalent. Put no index recommendations in SQL.
 When last_error exists, correct failed_sql using that error and the original request.
 Do not use PRAGMA, EXPLAIN, recursive CTEs, cross joins, external sources, or multiple statements.
-The database currently allows SELECT/READ actions only: SQL functions (including aggregates,
-LOWER, and date functions) cannot execute. Do not replace a requested aggregate with a constant
-or a different answer. Return the intended SELECT so unsupported execution fails transparently.
+The database allows SELECT/READ actions plus an explicit allowlist of read-only SQL functions,
+including COUNT, SUM, AVG, MIN, MAX, string functions, and date functions. Use those functions
+for requested analytics, but never use extension-loading or write-capable functions.
 """
 
 EXPLAINER_PROMPT = """Explain the final validated and executed SQL in plain English. Return JSON:

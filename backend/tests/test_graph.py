@@ -67,7 +67,7 @@ async def test_graph_repairs_validation_and_execution_errors(
     repair_context = json.loads(str(model.calls[2][-1].content).split("\n", 1)[1])
     assert repair_context["failed_sql"]
     if "imaginary_function" in bad_sql:
-        assert "IMAGINARY_FUNCTION" in repair_context["failed_sql"]
+        assert "imaginary_function" in repair_context["failed_sql"].lower()
     else:
         assert repair_context["failed_sql"] == bad_sql
     assert '"last_error": null' not in str(model.calls[2][-1].content)

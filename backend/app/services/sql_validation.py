@@ -9,6 +9,7 @@ from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from app.models.database import DatabaseSchema
+from app.services.sql_policy import READ_ONLY_SQL_FUNCTIONS
 
 
 class SQLValidationError(ValueError):
@@ -97,6 +98,12 @@ class SQLValidator:
         for node in expression.walk():
             if isinstance(node, forbidden_types):
                 raise SQLValidationError(f"Unsupported SQL operation: {node.key}.")
+            if isinstance(node, exp.Func) and not isinstance(node, exp.Exists):
+                function_name = (
+                    node.name if isinstance(node, exp.Anonymous) else node.sql_name()
+                ).casefold()
+                if function_name not in READ_ONLY_SQL_FUNCTIONS:
+                    raise SQLValidationError(f"Unsupported SQL function: {function_name}.")
             if isinstance(node, exp.With) and node.args.get("recursive"):
                 raise SQLValidationError("Recursive queries are not supported.")
             if isinstance(node, exp.Table) and (
