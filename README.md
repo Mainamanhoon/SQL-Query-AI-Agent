@@ -37,7 +37,12 @@ LLM_API_KEY=your-provider-key
 LLM_BASE_URL=https://openrouter.ai/api/v1
 LLM_MODEL=deepseek/deepseek-v4.1-flash
 LLM_MAX_TOKENS=1000
+CHAT_DATABASE_URL=sqlite:///./chat_sessions.db
 ```
+
+For Vercel, set `CHAT_DATABASE_URL` to a managed PostgreSQL connection string
+(Supabase, Neon, or another PostgreSQL provider). Vercel's function filesystem is
+ephemeral, so its chat sessions must not use the local SQLite default.
 
 ### 2. Run with Docker Compose
 
@@ -67,6 +72,7 @@ docker compose down
 | `LLM_TIMEOUT_SECONDS` | `30` | Deadline for each provider request |
 | `LLM_MAX_TOKENS` | `1000` | Maximum completion budget per model call |
 | `DATABASE_PATH` | `./ecommerce.db` | Existing SQLite file; containers set their own absolute path |
+| `CHAT_DATABASE_URL` | `sqlite:///./chat_sessions.db` | Separate chat store; use managed PostgreSQL on Vercel |
 | `QUERY_TIMEOUT_SECONDS` | `2` | SQLite progress-handler deadline |
 | `QUERY_ROW_LIMIT` | `200` | Returned row cap, with visible truncation status |
 | `CORS_ORIGINS` | `["http://localhost:5173"]` | JSON array of allowed frontend origins |
@@ -80,12 +86,14 @@ the configured provider; result rows are not sent for explanation.
 
 ```mermaid
 flowchart LR
-    UI[React + TypeScript + Tailwind] --> API[FastAPI /chat]
+    UI[React + TypeScript + Tailwind] --> API[FastAPI /chat + /sessions]
     API --> G[LangGraph workflow]
     G --> M[Injected language model]
     G --> V[SQLGlot AST + schema validator]
     V --> DB[Read-only SQLite service]
     DB --> DATA[(ecommerce.db)]
+    API --> CS[Server-side chat store]
+    CS --> CHAT[(PostgreSQL or chat SQLite)]
     S[Trusted schema extraction] --> V
     S --> M
 ```
@@ -109,9 +117,11 @@ docs/             Schema, workflow/design notes, demo script, evaluation checkli
 
 ```mermaid
 flowchart TD
-    A[Router: query / debug / optimize / clarify / out of scope] -->|Destructive or unrelated| R[Refuse]
+    A[Router: query / debug / optimize / clarify / out of scope] -->|Debug SQL| D[Inspect original SQL]
+    A -->|Destructive or unrelated| R[Refuse]
     A -->|Missing information| C[Ask for clarification]
     A -->|Query, debug, optimize| G[Generate using history and previous_sql]
+    D --> G
     G --> V[Validate AST, identifiers, and joins]
     V -->|Valid| E[Execute through restricted SQLite]
     V -->|Invalid| F[Increment retry_count]
@@ -198,12 +208,23 @@ call. `/schema` exposes the sample schema; `/health` reports database readiness 
 model configuration presence. `/api/*` aliases support the frontend proxy. Model
 configuration presence is not a live-provider health test.
 
-Conversation sessions are persisted in the browser under the `querydesk.sessions.v1`
-local-storage key. The UI keeps up to 20 sessions and 60 messages per session, while
-each request sends only the latest 30 messages to the backend. No server-side chat
-database is used, avoiding shared conversation state and cross-user leakage. Selecting
-an older session restores its messages and previous SQL; a new conversation starts a
-separate session. New conversation aborts pending client requests.
+`GET /sessions` lists sessions for the `X-Client-ID` header. `PUT /sessions/{id}`
+upserts one bounded session and `DELETE /sessions/{id}` removes it. The frontend
+generates this opaque identifier once and sends it automatically; no model call is
+made by any session endpoint.
+
+Conversation sessions are persisted server-side through `/sessions`, keyed by an
+opaque `X-Client-ID` retained in the browser. The backend keeps at most 20 sessions
+and 60 messages per client, and `/chat` loads the stored session before generating a
+follow-up. The browser's `querydesk.sessions.v1` local-storage value is only a cache
+for startup/offline continuity; it is not the source of truth. This anonymous client
+identifier is not authentication—add account authentication before treating sessions
+as private user data. Selecting an older session restores its messages and previous
+SQL; a new conversation starts a separate server session.
+
+The Docker Compose stack mounts a writable `chat_data` volume for local SQLite chat
+storage. For Vercel, configure `CHAT_DATABASE_URL` with a managed PostgreSQL URL in
+the backend project's Environment Variables and redeploy the backend.
 
 ## Verification
 
@@ -215,7 +236,7 @@ npm run build
 npm test
 ```
 
-Current checks: **70 backend tests and 7 frontend tests**. Backend tests use the real
+Current checks: **77 backend tests and 9 frontend tests**. Backend tests use the real
 seeded SQLite database and a scripted model, including repair after AST/schema and
 SQLite errors. Frontend tests exercise the actual HTTP client with controlled
 responses. These tests do not establish live LLM accuracy.

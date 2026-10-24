@@ -11,6 +11,7 @@ services:
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-1000}
       QUERY_TIMEOUT_SECONDS: ${QUERY_TIMEOUT_SECONDS:-2}
       QUERY_ROW_LIMIT: ${QUERY_ROW_LIMIT:-200}
+      CHAT_DATABASE_URL: ${CHAT_DATABASE_URL:-sqlite:////app/chat-data/chat_sessions.db}
     read_only: true
     tmpfs:
       - /tmp
@@ -18,6 +19,8 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    volumes:
+      - chat_data:/app/chat-data
     ports:
       - "127.0.0.1:8000:8000"
   frontend:
@@ -33,3 +36,6 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+volumes:
+  chat_data:

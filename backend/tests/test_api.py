@@ -68,3 +68,41 @@ def test_client_cannot_inject_system_role_or_unbounded_history(database_path: Pa
             == 422
         )
         assert client.post("/chat", json={"message": "   "}).status_code == 422
+
+
+def test_server_sessions_restore_context_between_requests(
+    database_path: Path, tmp_path: Path
+) -> None:
+    """A session id makes the server, rather than browser history, the context source."""
+    model = ScriptedModel(
+        [
+            decision(),
+            "SELECT name FROM Users",
+            explanation(),
+            decision(),
+            "SELECT name FROM Users WHERE state='California'",
+            explanation(),
+        ]
+    )
+    settings = Settings(
+        database_path=database_path,
+        chat_database_url=f"sqlite:///{tmp_path / 'chat.db'}",
+    )
+    headers = {"X-Client-ID": "browser-a"}
+    with TestClient(create_app(settings, model)) as client:
+        first = client.post(
+            "/chat", headers=headers, json={"message": "Show users", "session_id": "s1"}
+        )
+        assert first.status_code == 200
+        second = client.post(
+            "/chat",
+            headers=headers,
+            json={"message": "Only California", "session_id": "s1", "history": []},
+        )
+        assert second.status_code == 200
+        assert "California" in second.json()["generated_sql"]
+        assert len(client.get("/sessions", headers=headers).json()["sessions"][0]["messages"]) == 4
+        assert (
+            client.get("/sessions", headers={"X-Client-ID": "browser-b"}).json()["sessions"]
+            == []
+        )

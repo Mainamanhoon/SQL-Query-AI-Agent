@@ -48,7 +48,8 @@ describe('conversation state', () => {
     await act(async () => {
       await result.current.send('Only California');
     });
-    const payload = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    const chatCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/chat'));
+    const payload = JSON.parse(String(chatCalls[1][1]?.body));
     expect(payload.message).toBe('Only California');
     expect(payload.previous_sql).toBe(success.generated_sql);
     expect(payload.history).toContainEqual(
@@ -58,10 +59,16 @@ describe('conversation state', () => {
   });
 
   it('retains previous SQL across clarification responses', async () => {
-    fetchMock
-      .mockResolvedValueOnce(response(success))
-      .mockResolvedValueOnce(response({ ...success, status: 'clarification', generated_sql: null }))
-      .mockResolvedValueOnce(response(success));
+    let chatCall = 0;
+    fetchMock.mockImplementation(async (input) => {
+      if (!String(input).endsWith('/chat')) return response({ sessions: [] });
+      const responses = [
+        success,
+        { ...success, status: 'clarification' as const, generated_sql: null },
+        success,
+      ];
+      return response(responses[chatCall++]);
+    });
     const { result } = renderHook(() => useChat());
     await act(async () => {
       await result.current.send('Show users');
@@ -72,13 +79,18 @@ describe('conversation state', () => {
     await act(async () => {
       await result.current.send('I mean California');
     });
-    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body)).previous_sql).toBe(
+    const chatCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/chat'));
+    expect(JSON.parse(String(chatCalls[2][1]?.body)).previous_sql).toBe(
       success.generated_sql,
     );
   });
 
   it('shows API errors and removes the failed submission from history', async () => {
-    fetchMock.mockResolvedValueOnce(response({ detail: 'Model unavailable' }, 503));
+    fetchMock.mockImplementation(async (input) =>
+      String(input).endsWith('/sessions')
+        ? response({ sessions: [] })
+        : response({ detail: 'Model unavailable' }, 503),
+    );
     const { result } = renderHook(() => useChat());
     await act(async () => {
       await result.current.send('Show users');
@@ -99,20 +111,29 @@ describe('conversation state', () => {
         row_limit: 200,
       },
     };
-    fetchMock.mockResolvedValueOnce(response(runResult));
+    fetchMock.mockImplementation(async (input) =>
+      String(input).endsWith('/sessions')
+        ? response({ sessions: [] })
+        : response(runResult),
+    );
     const { result } = renderHook(() => useChat());
     await act(async () => {
       await result.current.runSql('SELECT state, COUNT(*) FROM Users GROUP BY state');
     });
-    expect(fetchMock.mock.calls[0][0]).toContain('/run-sql');
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+    const runCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/run-sql'));
+    expect(runCalls[0][0]).toContain('/run-sql');
+    expect(JSON.parse(String(runCalls[0][1]?.body))).toEqual({
       sql: 'SELECT state, COUNT(*) FROM Users GROUP BY state',
     });
     expect(result.current.selectedResponse?.query_results?.rows).toEqual([['California', 3]]);
   });
 
   it('keeps multiple sessions in browser storage and restores their messages', async () => {
-    fetchMock.mockResolvedValue(response(success));
+    fetchMock.mockImplementation(async (input) =>
+      String(input).endsWith('/sessions') && !String(input).includes('/sessions/')
+        ? response({ sessions: [] })
+        : response(success),
+    );
     const first = renderHook(() => useChat());
     await act(async () => {
       await first.result.current.send('Show users');

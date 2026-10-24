@@ -17,6 +17,7 @@ worker threads never reuse another request's connection.
 | Component | Responsibility |
 | --- | --- |
 | Router | Classify request and detect refusal/clarification routes |
+| Debug inspector | Validate supplied debug SQL and preserve the original error |
 | Generator | Generate or repair a SQL candidate for the chosen intent |
 | Validator | Enforce AST shape, identifiers, and supported joins |
 | Executor | Execute already validated SQL through the restricted database service |
@@ -58,7 +59,10 @@ increment it once per failed attempt. Values 1 and 2 loop to generation. Value 3
 routes to fallback, clears candidate SQL/results, and returns a controlled error.
 The graph recursion limit is an additional safeguard, not the primary stop condition.
 
-Clarification and rejection do not call the generator. Obvious destructive requests
+Clarification and rejection do not call the generator. Debug requests pass through a
+small inspection node first: an invalid supplied query becomes `original_error` and
+is then repaired by the generator, so a successful response contains both the fixed
+SQL and the diagnosis. Obvious destructive requests
 are refused before calling the model. Prompt-based routing is an additional layer;
 AST validation and database authorization do not depend on that classification.
 

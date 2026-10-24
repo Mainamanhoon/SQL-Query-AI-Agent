@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { runSQL as runSQLRequest, sendMessage } from '../services/api';
+import { listSessions, runSQL as runSQLRequest, sendMessage, syncSession } from '../services/api';
 import type { ChatMessage, ChatResponse, ChatSession } from '../types/chat';
 
 const SESSION_STORAGE_KEY = 'querydesk.sessions.v1';
@@ -82,6 +82,8 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const editorRequest = useRef<AbortController | null>(null);
+  const persistenceReady = useRef(false);
+  const initialState = useRef(sessionState);
 
   const activeSession =
     sessionState.sessions.find((session) => session.id === sessionState.activeSessionId) ||
@@ -106,6 +108,42 @@ export function useChat() {
       // A full or disabled browser storage should not prevent the chat from working.
     }
   }, [sessionState.activeSessionId, sessionState.sessions]);
+
+  useEffect(() => {
+    let mounted = true;
+    listSessions()
+      .then((serverSessions) => {
+        if (!mounted) return;
+        if (serverSessions.length) {
+          setSessionState((current) => ({
+            sessions: serverSessions,
+            activeSessionId:
+              serverSessions.find((session) => session.id === current.activeSessionId)?.id ||
+              serverSessions[0].id,
+          }));
+        } else {
+          void Promise.all(initialState.current.sessions.map((session) => syncSession(session))).catch(
+            () => undefined,
+          );
+        }
+        persistenceReady.current = true;
+      })
+      .catch(() => {
+        // The local cache remains available if a deployment has no chat database yet.
+        persistenceReady.current = true;
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!persistenceReady.current || !activeSession) return undefined;
+    const timer = window.setTimeout(() => {
+      void syncSession(activeSession).catch(() => undefined);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [activeSession]);
 
   useEffect(() => () => {
     activeRequest.current?.abort();
@@ -154,6 +192,7 @@ export function useChat() {
         activeSession.messages,
         activeSession.previousSql,
         controller.signal,
+        activeSession.id,
       );
       if (controller.signal.aborted) return;
       const nextPreviousSql =

@@ -9,6 +9,7 @@ from langgraph.graph.state import CompiledStateGraph
 from app.agent.nodes import (
     AgentDependencies,
     clarification_node,
+    debug_inspection_node,
     executor_node,
     explainer_node,
     fallback_node,
@@ -20,7 +21,7 @@ from app.agent.nodes import (
 from app.models.agent import AgentState
 
 
-def route_intent(state: AgentState) -> Literal["reject", "clarify", "generate"]:
+def route_intent(state: AgentState) -> Literal["reject", "clarify", "inspect_debug", "generate"]:
     """Choose the next node from the router's state without side effects.
 
     Args:
@@ -33,7 +34,14 @@ def route_intent(state: AgentState) -> Literal["reject", "clarify", "generate"]:
         return "reject"
     if state["intent"] == "clarify":
         return "clarify"
+    if state["intent"] == "debug":
+        return "inspect_debug"
     return "generate"
+
+
+def route_debug_inspection(state: AgentState) -> Literal["clarify", "generate"]:
+    """Route a debug request to clarification when no SQL was supplied."""
+    return "clarify" if state["intent"] == "clarify" else "generate"
 
 
 def route_validation(state: AgentState) -> Literal["execute", "generate", "fallback"]:
@@ -76,6 +84,7 @@ def build_graph(dependencies: AgentDependencies) -> CompiledStateGraph:
     graph = StateGraph(AgentState)
     graph.add_node("router", partial(router_node, dependencies=dependencies))
     graph.add_node("generate", partial(sql_generator_node, dependencies=dependencies))
+    graph.add_node("inspect_debug", partial(debug_inspection_node, dependencies=dependencies))
     graph.add_node("validate", partial(validation_node, dependencies=dependencies))
     graph.add_node("execute", partial(executor_node, dependencies=dependencies))
     graph.add_node("explain", partial(explainer_node, dependencies=dependencies))
@@ -84,6 +93,7 @@ def build_graph(dependencies: AgentDependencies) -> CompiledStateGraph:
     graph.add_node("fallback", fallback_node)
     graph.add_edge(START, "router")
     graph.add_conditional_edges("router", route_intent)
+    graph.add_conditional_edges("inspect_debug", route_debug_inspection)
     graph.add_edge("generate", "validate")
     graph.add_conditional_edges("validate", route_validation)
     graph.add_conditional_edges("execute", route_execution)

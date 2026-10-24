@@ -12,6 +12,7 @@ from app.agent.graph import build_graph
 from app.agent.nodes import AgentDependencies
 from app.api.routes import router
 from app.config import Settings
+from app.services.chat_store import DatabaseChatStore
 from app.services.database import DatabaseService
 from app.services.llm import HTTPChatModel, LanguageModel
 from app.services.sql_validation import SQLValidator
@@ -46,6 +47,8 @@ def create_app(
             configuration.query_timeout_seconds,
             configuration.query_row_limit,
         )
+        chat_store = DatabaseChatStore(configuration.chat_database_url)
+        chat_store.initialize()
         sql_validator = SQLValidator(database.schema)
         async with httpx.AsyncClient(timeout=configuration.llm_timeout_seconds) as client:
             language_model = model or HTTPChatModel(
@@ -56,6 +59,7 @@ def create_app(
                 configuration.llm_max_tokens,
             )
             application.state.database = database
+            application.state.chat_store = chat_store
             application.state.sql_validator = sql_validator
             application.state.model_configured = bool(
                 model or (configuration.llm_api_key.get_secret_value() and configuration.llm_model)
@@ -64,13 +68,14 @@ def create_app(
                 AgentDependencies(database, sql_validator, language_model)
             )
             yield
+        chat_store.close()
 
     application = FastAPI(title="QueryDesk API", version="0.1.0", lifespan=lifespan)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=configuration.cors_origins,
-        allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Content-Type", "X-Client-ID"],
     )
     application.include_router(router)
     application.include_router(router, prefix="/api", include_in_schema=False)

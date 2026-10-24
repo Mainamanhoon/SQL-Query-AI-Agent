@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_path: Path = Path("ecommerce.db")
+    chat_database_url: str = "sqlite:///./chat_sessions.db"
     llm_api_key: SecretStr = SecretStr("")
     llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = ""

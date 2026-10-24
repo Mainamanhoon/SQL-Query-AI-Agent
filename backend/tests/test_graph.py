@@ -168,6 +168,28 @@ async def test_valid_debug_query_does_not_require_an_original_error(
         ]
     )
     graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
-    result = await graph.ainvoke(initial_state(ChatRequest(message="Validate this SQL query")))
+    result = await graph.ainvoke(
+        initial_state(ChatRequest(message="Validate this SQL query: SELECT name FROM Users"))
+    )
     assert result["status"] == "success"
     assert result["original_error"] is None
+
+
+async def test_invalid_debug_query_explains_original_error(
+    database: DatabaseService,
+) -> None:
+    """Debug inspection preserves the user's invalid column diagnosis after repair."""
+    model = ScriptedModel(
+        [
+            decision("debug"),
+            "SELECT name FROM Users",
+            explanation(original_error="Original SQL error: Unknown column: fullname"),
+        ]
+    )
+    graph = build_graph(AgentDependencies(database, SQLValidator(database.schema), model))
+    result = await graph.ainvoke(
+        initial_state(ChatRequest(message="Debug: SELECT fullname FROM Users"))
+    )
+    assert result["status"] == "success"
+    assert result["generated_sql"]
+    assert "fullname" in result["original_error"]

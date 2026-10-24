@@ -31,6 +31,7 @@ ormsgpack==1.12.2
 packaging==26.3
 pydantic-settings==2.15.0
 pydantic==2.14.1
+psycopg[binary]>=3.2,<4
 pydantic_core==2.50.1
 python-dotenv==1.2.4
 PyYAML==6.0.3

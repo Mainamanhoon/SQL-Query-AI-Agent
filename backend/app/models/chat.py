@@ -19,11 +19,42 @@ class ChatMessage(BaseModel):
     sql: Optional[str] = Field(default=None, max_length=12000)
 
 
+class PersistedChatMessage(BaseModel):
+    """A complete message retained by the server-side conversation store."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    id: str = Field(min_length=1, max_length=100)
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=12000)
+    sql: Optional[str] = Field(default=None, max_length=12000)
+    response: Optional["ChatResponse"] = None
+
+
+class ChatSession(BaseModel):
+    """A bounded conversation snapshot stored for one client identifier."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    id: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1, max_length=200)
+    created_at: str = Field(alias="createdAt", min_length=1, max_length=80)
+    updated_at: str = Field(alias="updatedAt", min_length=1, max_length=80)
+    messages: List[PersistedChatMessage] = Field(default_factory=list, max_length=60)
+    previous_sql: Optional[str] = Field(default=None, alias="previousSql", max_length=12000)
+    selected_response: Optional["ChatResponse"] = Field(default=None, alias="selectedResponse")
+
+
+class SessionListResponse(BaseModel):
+    """Server response containing the client's available conversations."""
+
+    sessions: List[ChatSession] = Field(default_factory=list)
+
+
 class ChatRequest(BaseModel):
     """A new message and its bounded conversational context."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     message: str = Field(min_length=1, max_length=4000)
+    session_id: Optional[str] = Field(default=None, max_length=100)
     history: List[ChatMessage] = Field(default_factory=list, max_length=30)
     previous_sql: Optional[str] = Field(default=None, max_length=12000)
 
@@ -72,3 +103,7 @@ class Explanation(BaseModel):
     explanation: str = Field(min_length=1, max_length=4000)
     original_error: Optional[str] = Field(default=None, max_length=2000)
     optimization_tips: List[str] = Field(default_factory=list, max_length=6)
+
+
+PersistedChatMessage.model_rebuild()
+ChatSession.model_rebuild()

@@ -1,9 +1,31 @@
-import type { ChatMessage, ChatResponse, DatabaseSchema, SQLRunResponse } from '../types/chat';
+import type {
+  ChatMessage,
+  ChatResponse,
+  ChatSession,
+  DatabaseSchema,
+  SQLRunResponse,
+} from '../types/chat';
 
 const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+const CLIENT_ID_STORAGE_KEY = 'querydesk.client-id.v1';
+
+function getClientId(): string {
+  if (typeof window === 'undefined') return 'server-rendered-client';
+  const stored = localStorage.getItem(CLIENT_ID_STORAGE_KEY);
+  if (stored) return stored;
+  const clientId = crypto.randomUUID();
+  localStorage.setItem(CLIENT_ID_STORAGE_KEY, clientId);
+  return clientId;
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, options);
+  const response = await fetch(`${apiBase}${path}`, {
+    ...options,
+    headers: {
+      'X-Client-ID': getClientId(),
+      ...(options?.headers || {}),
+    },
+  });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     throw new Error(
@@ -20,6 +42,7 @@ export function sendMessage(
   history: ChatMessage[],
   previousSql: string | null,
   signal: AbortSignal,
+  sessionId?: string,
 ) {
   return request<ChatResponse>('/chat', {
     method: 'POST',
@@ -29,6 +52,7 @@ export function sendMessage(
       message,
       history: history.slice(-30).map(({ role, content, sql }) => ({ role, content, sql })),
       previous_sql: previousSql,
+      session_id: sessionId,
     }),
   });
 }
@@ -48,4 +72,21 @@ export function runSQL(sql: string, signal?: AbortSignal) {
     signal,
     body: JSON.stringify({ sql }),
   });
+}
+
+export async function listSessions(): Promise<ChatSession[]> {
+  const body = await request<{ sessions: ChatSession[] }>('/sessions');
+  return Array.isArray(body.sessions) ? body.sessions : [];
+}
+
+export function syncSession(session: ChatSession): Promise<ChatSession> {
+  return request<ChatSession>(`/sessions/${encodeURIComponent(session.id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(session),
+  });
+}
+
+export function deleteSession(sessionId: string): Promise<void> {
+  return request<void>(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
 }

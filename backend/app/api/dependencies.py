@@ -3,6 +3,7 @@
 from fastapi import Request
 from langgraph.graph.state import CompiledStateGraph
 
+from app.services.chat_store import ChatStore
 from app.services.database import DatabaseService
 from app.services.sql_validation import SQLValidator
 
@@ -35,3 +36,15 @@ def get_sql_validator(request: Request) -> SQLValidator:
         Shared schema-aware SQL validator.
     """
     return request.app.state.sql_validator
+
+
+def get_chat_store(request: Request) -> ChatStore:
+    """Return the startup-built server-side conversation store.
+
+    Args:
+        request: Current request whose application owns the store.
+
+    Returns:
+        Chat persistence interface shared by session and chat routes.
+    """
+    return request.app.state.chat_store

@@ -56,6 +56,42 @@ async def router_node(state: AgentState, dependencies: AgentDependencies) -> Dic
     return decision.model_dump()
 
 
+def _extract_debug_sql(message: str, previous_sql: str | None) -> str:
+    """Extract a likely SQL statement from a debug request or its prior query."""
+    match = re.search(r"\b(?:SELECT|WITH)\b[\s\S]*", message, re.IGNORECASE)
+    return (match.group(0) if match else (previous_sql or "")).strip()
+
+
+def debug_inspection_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
+    """Validate the user's original debug SQL before asking for a correction.
+
+    Args:
+        state: Routed debug request containing the latest user text and previous SQL.
+        dependencies: Injected schema-aware SQL validator.
+
+    Returns:
+        Original SQL and its first validation error, if any. This node does not execute
+        SQL or count a retry; the generator remains responsible for producing a repair.
+    """
+    latest_message = str(state["messages"][-1].content)
+    candidate_sql = _extract_debug_sql(latest_message, state["previous_sql"])
+    if not candidate_sql:
+        return {
+            "intent": "clarify",
+            "clarification": "Please include the SQL query you want me to debug.",
+        }
+    try:
+        validated_sql = dependencies.validator.validate(candidate_sql)
+    except SQLValidationError as error:
+        error_message = f"Original SQL error: {error}"
+        return {
+            "generated_sql": candidate_sql,
+            "error_msg": error_message,
+            "original_error": error_message,
+        }
+    return {"generated_sql": validated_sql, "error_msg": None}
+
+
 async def sql_generator_node(state: AgentState, dependencies: AgentDependencies) -> Dict[str, Any]:
     """Generate or repair one candidate using intent, previous SQL, and error context.
 
