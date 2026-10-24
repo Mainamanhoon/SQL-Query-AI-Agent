@@ -87,6 +87,29 @@ describe('conversation state', () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it('runs edited SQL through the guarded execution endpoint', async () => {
+    const runResult = {
+      sql: 'SELECT state, COUNT(*) AS user_count FROM Users GROUP BY state',
+      query_results: {
+        columns: ['state', 'user_count'],
+        rows: [['California', 3]],
+        truncated: false,
+        elapsed_ms: 1,
+        row_limit: 200,
+      },
+    };
+    fetchMock.mockResolvedValueOnce(response(runResult));
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.runSql('SELECT state, COUNT(*) FROM Users GROUP BY state');
+    });
+    expect(fetchMock.mock.calls[0][0]).toContain('/run-sql');
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      sql: 'SELECT state, COUNT(*) FROM Users GROUP BY state',
+    });
+    expect(result.current.selectedResponse?.query_results?.rows).toEqual([['California', 3]]);
+  });
+
   it('ignores a stale response after starting a new conversation', async () => {
     let resolve!: (response: Response) => void;
     fetchMock.mockReturnValue(

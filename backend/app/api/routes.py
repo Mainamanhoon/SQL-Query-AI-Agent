@@ -1,5 +1,6 @@
 """Chat transport and safe projections of internal graph state."""
 
+import sqlite3
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -7,12 +8,13 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
 from langgraph.graph.state import CompiledStateGraph
 
-from app.api.dependencies import get_database, get_graph
+from app.api.dependencies import get_database, get_graph, get_sql_validator
 from app.models.agent import AgentState
-from app.models.chat import ChatRequest, ChatResponse
+from app.models.chat import ChatRequest, ChatResponse, SQLRunRequest, SQLRunResponse
 from app.models.database import DatabaseSchema
 from app.services.database import DatabaseService
 from app.services.llm import ModelUnavailableError
+from app.services.sql_validation import SQLValidationError, SQLValidator
 
 router = APIRouter()
 
@@ -96,6 +98,38 @@ async def chat(
         optimization_tips=state["optimization_tips"],
         query_results=state["query_results"] if successful else None,
     )
+
+
+@router.post("/run-sql", response_model=SQLRunResponse)
+def run_sql(
+    payload: SQLRunRequest,
+    database: Annotated[DatabaseService, Depends(get_database)],
+    sql_validator: Annotated[SQLValidator, Depends(get_sql_validator)],
+) -> SQLRunResponse:
+    """Validate and execute SQL submitted from the editor without invoking the model.
+
+    Args:
+        payload: Untrusted SQL text entered by the user.
+        database: Injected read-only SQLite service with authorizer and limits.
+        sql_validator: Shared SQLGlot and schema validator built at startup.
+
+    Returns:
+        Canonical validated SQL and bounded query results.
+
+    Raises:
+        HTTPException: If AST/schema validation or read-only execution fails.
+
+    Side Effects:
+        Opens a read-only SQLite connection; never modifies database contents.
+    """
+    try:
+        validated_sql = sql_validator.validate(payload.sql)
+        query_results = database.execute(validated_sql)
+    except SQLValidationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except sqlite3.DatabaseError as error:
+        raise HTTPException(status_code=400, detail=f"SQL execution failed: {error}") from error
+    return SQLRunResponse(sql=validated_sql, query_results=query_results)
 
 
 @router.get("/schema", response_model=DatabaseSchema)

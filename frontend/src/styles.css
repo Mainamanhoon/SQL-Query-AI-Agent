@@ -688,6 +688,11 @@ button svg {
 .card-heading > span > svg {
   color: #899c78;
 }
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .language-tag {
   font-family: monospace;
   font-size: 10px;
@@ -709,6 +714,56 @@ button svg {
 }
 .small-button:hover:not(:disabled) {
   background: #eef3e7;
+}
+.run-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  background: #334f35;
+  color: #edf7dc;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+.run-button:hover:not(:disabled) {
+  background: #4b6944;
+}
+.sql-editor {
+  display: block;
+  width: 100%;
+  min-height: 205px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  padding: 24px 20px;
+  color: #35412e;
+  background: #fff;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.9;
+  tab-size: 2;
+}
+.sql-editor:focus {
+  box-shadow: inset 0 0 0 2px #d7e7c9;
+}
+.sql-run-error {
+  margin: 0 15px 10px;
+  padding: 9px 11px;
+  border: 1px solid #f1d9cc;
+  border-radius: 5px;
+  color: #9b5a3f;
+  background: #fff4ee;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .empty-code {
   font-family: 'Cascadia Code', 'Consolas', monospace;

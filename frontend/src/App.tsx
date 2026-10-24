@@ -237,6 +237,8 @@ export default function App() {
               <SQLPanel
                 query={response?.generated_sql || null}
                 retries={response?.retry_count || 0}
+                running={chat.sqlRunning}
+                onRun={chat.runSql}
               />
               <ExplanationBox response={response} />
               <ResultsTable results={response?.query_results || null} />

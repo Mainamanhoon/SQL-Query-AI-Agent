@@ -46,6 +46,7 @@ def create_app(
             configuration.query_timeout_seconds,
             configuration.query_row_limit,
         )
+        sql_validator = SQLValidator(database.schema)
         async with httpx.AsyncClient(timeout=configuration.llm_timeout_seconds) as client:
             language_model = model or HTTPChatModel(
                 client,
@@ -55,11 +56,12 @@ def create_app(
                 configuration.llm_max_tokens,
             )
             application.state.database = database
+            application.state.sql_validator = sql_validator
             application.state.model_configured = bool(
                 model or (configuration.llm_api_key.get_secret_value() and configuration.llm_model)
             )
             application.state.graph = build_graph(
-                AgentDependencies(database, SQLValidator(database.schema), language_model)
+                AgentDependencies(database, sql_validator, language_model)
             )
             yield
 

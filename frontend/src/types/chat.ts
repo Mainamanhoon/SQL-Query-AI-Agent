@@ -8,6 +8,11 @@ export interface QueryResults {
   row_limit: number | null;
 }
 
+export interface SQLRunResponse {
+  sql: string;
+  query_results: QueryResults;
+}
+
 export interface ChatResponse {
   status: 'success' | 'rejected' | 'clarification' | 'error';
   intent: Intent;

@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatResponse, DatabaseSchema } from '../types/chat';
+import type { ChatMessage, ChatResponse, DatabaseSchema, SQLRunResponse } from '../types/chat';
 
 const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -39,4 +39,13 @@ export function getSchema() {
 
 export function getHealth() {
   return request<{ status: string; model_configured: boolean }>('/health');
+}
+
+export function runSQL(sql: string, signal?: AbortSignal) {
+  return request<SQLRunResponse>('/run-sql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({ sql }),
+  });
 }

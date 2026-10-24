@@ -192,9 +192,11 @@ ignored by Git and reproduced locally or during the image build.
 Responses include `status`, `intent`, `generated_sql`, `is_valid`, `retry_count`,
 `explanation`, `original_error`, `optimization_tips`, and positional `query_results`.
 Status is `success`, `clarification`, `rejected`, or `error`. SQL is null for
-unsuccessful responses. `/schema` exposes the sample schema; `/health` reports
-database readiness and model configuration presence. `/api/*` aliases support the
-frontend proxy. Model configuration presence is not a live-provider health test.
+unsuccessful responses. `/run-sql` accepts SQL from the editor and validates and
+executes it through the same SQLGlot and read-only SQLite guardrails without an LLM
+call. `/schema` exposes the sample schema; `/health` reports database readiness and
+model configuration presence. `/api/*` aliases support the frontend proxy. Model
+configuration presence is not a live-provider health test.
 
 Conversation history lives in browser memory and is sent with each turn. This avoids
 shared server conversation state and cross-user leakage; a page refresh starts a new

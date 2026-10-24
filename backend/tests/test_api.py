@@ -32,6 +32,18 @@ def test_missing_model_configuration_is_actionable(database_path: Path) -> None:
         assert "LLM_API_KEY" in response.json()["detail"]
 
 
+def test_run_sql_validates_and_executes_editor_queries(database_path: Path) -> None:
+    """The editor endpoint runs safe SQL without requiring a configured model."""
+    with TestClient(create_app(Settings(database_path=database_path))) as client:
+        response = client.post(
+            "/run-sql",
+            json={"sql": "SELECT state, COUNT(*) AS user_count FROM Users GROUP BY state"},
+        )
+        assert response.status_code == 200
+        assert response.json()["query_results"]["rows"]
+        assert client.post("/run-sql", json={"sql": "DROP TABLE Users"}).status_code == 400
+
+
 def test_client_cannot_inject_system_role_or_unbounded_history(database_path: Path) -> None:
     """Pydantic rejects unsupported message roles and oversized conversations."""
     with TestClient(create_app(Settings(database_path=database_path), ScriptedModel([]))) as client:

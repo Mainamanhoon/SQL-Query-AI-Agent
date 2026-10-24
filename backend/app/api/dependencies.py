@@ -4,6 +4,7 @@ from fastapi import Request
 from langgraph.graph.state import CompiledStateGraph
 
 from app.services.database import DatabaseService
+from app.services.sql_validation import SQLValidator
 
 
 def get_graph(request: Request) -> CompiledStateGraph:
@@ -22,3 +23,15 @@ def get_database(request: Request) -> DatabaseService:
         request: Current FastAPI request.
     """
     return request.app.state.database
+
+
+def get_sql_validator(request: Request) -> SQLValidator:
+    """Return the startup-built SQLGlot validator used by graph and editor routes.
+
+    Args:
+        request: Current request whose application owns the validator.
+
+    Returns:
+        Shared schema-aware SQL validator.
+    """
+    return request.app.state.sql_validator

@@ -44,6 +44,20 @@ class ChatResponse(BaseModel):
     query_results: Optional[QueryResults] = None
 
 
+class SQLRunRequest(BaseModel):
+    """A SQL statement submitted from the editor for guarded execution."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    sql: str = Field(min_length=1, max_length=12000)
+
+
+class SQLRunResponse(BaseModel):
+    """Validated SQL and bounded results returned by the editor execution endpoint."""
+
+    sql: str
+    query_results: QueryResults
+
+
 class IntentDecision(BaseModel):
     """Structured routing result, including a separate destructive-request flag."""
 
