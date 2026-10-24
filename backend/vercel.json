@@ -4,7 +4,7 @@
   "functions": {
     "app/server.py": {
       "maxDuration": 60,
-      "includeFiles": ["ecommerce.db"]
+      "includeFiles": "ecommerce.db"
     }
   }
 }
