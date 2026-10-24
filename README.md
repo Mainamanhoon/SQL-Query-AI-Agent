@@ -5,10 +5,8 @@ refine it in a follow-up, or paste a query for debugging or optimization. Genera
 SQL is checked with SQLGlot and executed through an independently restricted SQLite
 connection before it is returned to the browser.
 
-**Submission status:** source, tests, Docker images, and deployment configuration
-are available. A live public URL and the final demo video are **not yet available**.
-Live model testing needs `LLM_API_KEY` and `LLM_MODEL`; publishing needs a hosting
-account. No model responses are simulated in the application.
+Source, tests, Docker images, and local setup are included. Live model testing needs
+`LLM_API_KEY` and `LLM_MODEL`; no model responses are simulated in the application.
 
 ## Setup and run
 
@@ -292,26 +290,6 @@ Chat responses in that browser test are explicitly HTTP fixtures. Screenshots go
 the ignored `artifacts/browser/` directory. CI runs backend tests and frontend build/tests.
 
 See [evaluation cases](docs/evaluation.md) for live model acceptance checks.
-
-## Public deployment
-
-The root `Dockerfile` serves React and FastAPI from one service, avoiding separate
-frontend/backend domains. It includes the read-only sample database, runs as a
-non-root user, and listens on the platform's `PORT` variable.
-
-1. Create a Render Blueprint using this repository and its `render.yaml`, or use
-   [Deploy to Render](https://render.com/deploy?repo=https://github.com/Mainamanhoon/SQL-Query-AI-Agent).
-2. Set `LLM_API_KEY` and `LLM_MODEL` in the hosting dashboard. Update `LLM_BASE_URL`
-   for your provider. Never commit credentials.
-3. After deployment, open the assigned public URL and run the live evaluation cases.
-4. Record the verified public URL here and in the assignment submission.
-
-The Blueprint uses Render's documented Docker, health-check, and secret-variable
-settings: [Blueprint reference](https://render.com/docs/blueprint-spec).
-
-**Public application URL:** pending hosting configuration and verification.
-**Demo video:** pending a configured live model; recording outline in
-[docs/demo-script.md](docs/demo-script.md). A deploy button is not a deployed application.
 
 ## Assumptions
 
